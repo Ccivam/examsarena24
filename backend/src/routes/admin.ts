@@ -1,0 +1,145 @@
+import express, { Request, Response } from 'express';
+import Test from '../models/Test';
+import Problem from '../models/Problem';
+import Registration from '../models/Registration';
+import User from '../models/User';
+import Result from '../models/Result';
+import Submission from '../models/Submission';
+import { isAdmin } from '../middleware/auth';
+
+const router = express.Router();
+
+// Dashboard stats
+router.get('/stats', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const [totalUsers, totalTests, totalProblems, pendingPayments, pendingProblems] =
+      await Promise.all([
+        User.countDocuments(),
+        Test.countDocuments(),
+        Problem.countDocuments(),
+        Registration.countDocuments({ paymentStatus: 'pending' }),
+        Problem.countDocuments({ status: 'pending' }),
+      ]);
+
+    const liveTests = await Test.find({ status: 'live' }).select('title startTime endTime');
+    const upcomingTests = await Test.find({ status: 'upcoming' })
+      .select('title startTime fee')
+      .sort({ startTime: 1 })
+      .limit(5);
+
+    res.json({
+      totalUsers,
+      totalTests,
+      totalProblems,
+      pendingPayments,
+      pendingProblems,
+      liveTests,
+      upcomingTests,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Publish solutions for a test
+router.put('/tests/:id/publish-solutions', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const test = await Test.findByIdAndUpdate(
+      req.params.id,
+      { solutionPublishedAt: new Date() },
+      { new: true }
+    );
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    res.json({ message: 'Solutions published', test });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Publish leaderboard for a test
+router.put('/tests/:id/publish-leaderboard', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const resultsExist = await Result.countDocuments({ test: req.params.id });
+    if (resultsExist === 0) {
+      return res.status(400).json({ message: 'Calculate results first before publishing leaderboard.' });
+    }
+    const test = await Test.findByIdAndUpdate(
+      req.params.id,
+      { leaderboardPublishedAt: new Date() },
+      { new: true }
+    );
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    res.json({ message: 'Leaderboard published', test });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Change test status (upcoming -> live -> completed)
+router.put('/tests/:id/status', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    const test = await Test.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    res.json({ message: `Test status updated to ${status}`, test });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all approved problems (for adding to a test)
+router.get('/problems/approved', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const problems = await Problem.find({ status: 'approved' })
+      .select('title subject difficulty marks negativeMarks')
+      .sort({ subject: 1, createdAt: -1 });
+    res.json(problems);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update problems list on a test
+router.put('/tests/:id/problems', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const { problemIds } = req.body; // array of problem IDs in order
+    const problems = problemIds.map((id: string, i: number) => ({ problem: id, order: i + 1 }));
+    const test = await Test.findByIdAndUpdate(
+      req.params.id,
+      { problems },
+      { new: true }
+    ).populate('problems.problem', 'title subject');
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    res.json(test);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all problems (admin - with filter)
+router.get('/problems', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const problems = await Problem.find(filter)
+      .populate('author', 'name')
+      .sort({ createdAt: -1 });
+    res.json(problems);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get submissions for a test (admin view)
+router.get('/tests/:id/submissions', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const submissions = await Submission.find({ test: req.params.id, isSubmitted: true })
+      .populate('user', 'name email')
+      .sort({ submittedAt: -1 });
+    res.json(submissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+export default router;
