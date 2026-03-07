@@ -83,7 +83,9 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
 
     req.login(user, err => {
       if (err) return res.status(500).json({ message: 'Account created but login failed. Please sign in.' });
-      res.status(201).json({ _id: user._id, name: user.name, email: user.email, picture: user.picture, role: user.role });
+      req.session.save(() => {
+        res.status(201).json({ _id: user._id, name: user.name, email: user.email, picture: user.picture, role: user.role });
+      });
     });
   } catch (error) {
     console.error('Verify OTP error:', error);
@@ -110,7 +112,9 @@ router.post('/login', async (req: Request, res: Response) => {
 
     req.login(user, err => {
       if (err) return res.status(500).json({ message: 'Login failed' });
-      res.json({ _id: user._id, name: user.name, email: user.email, picture: user.picture, role: user.role });
+      req.session.save(() => {
+        res.json({ _id: user._id, name: user.name, email: user.email, picture: user.picture, role: user.role });
+      });
     });
   } catch (error) {
     res.status(500).json({ message: 'Login failed' });
