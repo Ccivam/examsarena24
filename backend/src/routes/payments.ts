@@ -22,19 +22,27 @@ router.post('/create-order', isAuthenticated, async (req: Request, res: Response
     const test = await Test.findById(testId);
     if (!test) return res.status(404).json({ message: 'Test not found' });
 
-    if (test.fee === 0) {
-      return res.status(400).json({ message: 'This is a free test. No payment required.' });
-    }
-
     if (new Date() > test.registrationDeadline) {
       return res.status(400).json({ message: 'Registration deadline has passed' });
-    }
 
-    // Check if already registered
+
+
+    }
+    
+      // Check if already registered
     const existing = await Registration.findOne({ user: user._id, test: testId });
     if (existing && (existing.paymentStatus === 'verified' || existing.paymentStatus === 'pending')) {
       return res.status(400).json({ message: 'Already registered for this test' });
     }
+    
+
+    if (test.fee === 0) {
+      return res.status(400).json({ message: 'This is a free test. No payment required.' });
+    }
+
+    
+
+  
 
     // Create Razorpay order (amount in paise)
     const order = await razorpay.orders.create({

@@ -529,50 +529,101 @@ h1, h2, h3, h4, .serif-text {
 }
 
 @media (max-width: 768px) {
+  /* Switch from grid to block so sidebar doesn't conflict */
   .app-container {
-    grid-template-columns: 1fr;
+    display: block;
+    min-height: 100vh;
   }
+
+  /* Fixed bottom nav bar */
   .sidebar {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    top: auto;
     height: auto;
-    z-index: 100;
+    width: 100%;
+    z-index: 200;
     flex-direction: row;
     align-items: center;
-    padding: 0.5rem 0.5rem;
+    justify-content: space-around;
+    padding: 0.4rem 0.25rem;
     border-right: none;
     border-top: 1px solid var(--c-border);
+    background: var(--c-paper);
+    overflow: visible;
   }
+
   .brand { display: none; }
+  .section-label { display: none; }
+  .user-profile { display: none; }
+
   .nav-menu {
     display: flex;
     flex: 1;
-    gap: 0;
+    flex-direction: row;
     justify-content: space-around;
+    align-items: center;
+    gap: 0;
+    margin: 0;
   }
-  .nav-item { margin-bottom: 0; flex: 1; }
+
+  .nav-item {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
   .nav-link {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px 2px;
-    font-size: 0.6rem;
+    padding: 4px 2px;
+    font-size: 0.55rem;
     border-left: none;
-    border-top: 3px solid transparent;
+    border-top: 2px solid transparent;
     text-align: center;
     white-space: nowrap;
+    gap: 2px;
   }
-  .nav-link .nav-icon { font-size: 1.2rem; margin-bottom: 2px; display: block; }
-  .sidebar .section-label { display: none; }
-  .nav-link.active { border-left: none; border-top-color: var(--c-ink); }
-  .user-profile { display: none; }
-  .main-content { padding-bottom: 72px; }
-  .view-section { padding: 1.25rem 1rem 1.5rem; }
-  .stats-grid { grid-template-columns: repeat(3, 1fr); }
-  .view-header { flex-wrap: wrap; gap: 0.75rem; }
+
+  .nav-link.active {
+    border-left: none;
+    border-top: 2px solid var(--c-ink);
+    color: var(--c-ink);
+  }
+
+  .nav-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+  }
+
+  /* Push content above the nav bar */
+  .main-content {
+    padding-bottom: 70px;
+    min-height: 100vh;
+  }
+
+  .view-section {
+    padding: 1.25rem 1rem 1rem;
+    min-height: unset;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+
+  .view-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Test timer */
