@@ -7,6 +7,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    if (!window.confirm('Are you sure you want to sign out?')) return;
     await logout();
     navigate('/');
   };
