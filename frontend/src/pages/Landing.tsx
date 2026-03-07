@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../main';
+
+const GOOGLE_AUTH_URL = `${API_BASE}/api/auth/google`;
 
 type View =
   | 'home'
@@ -309,7 +312,7 @@ const Landing: React.FC = () => {
             <h3 className="view-title" style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>Get Started</h3>
             <p style={{ color: 'var(--c-ink-soft)', fontSize: '0.85rem', marginBottom: '2rem' }}>Sign in or create a new account</p>
 
-            <a href="/api/auth/google" className="btn btn-primary" style={{ width: '100%', padding: '13px', marginBottom: '0.75rem', gap: '10px' }}>
+            <a href={GOOGLE_AUTH_URL} className="btn btn-primary" style={{ width: '100%', padding: '13px', marginBottom: '0.75rem', gap: '10px' }}>
               <GoogleIcon /> Continue with Google
             </a>
 
@@ -349,7 +352,7 @@ const Landing: React.FC = () => {
               {busy ? 'Signing in...' : 'Sign In'}
             </button>
             <Divider />
-            <a href="/api/auth/google" className="btn" style={{ width: '100%', padding: '12px', marginBottom: '0.75rem', gap: '8px' }}>
+            <a href={GOOGLE_AUTH_URL} className="btn" style={{ width: '100%', padding: '12px', marginBottom: '0.75rem', gap: '8px' }}>
               <GoogleIcon /> Continue with Google
             </a>
             <button type="button" className="btn" style={{ width: '100%', padding: '10px', fontSize: '0.75rem' }} onClick={() => go('home')}>← Back</button>
@@ -387,7 +390,7 @@ const Landing: React.FC = () => {
               {busy ? 'Sending OTP...' : 'Send Verification OTP'}
             </button>
             <Divider />
-            <a href="/api/auth/google" className="btn" style={{ width: '100%', padding: '12px', marginBottom: '0.75rem', gap: '8px' }}>
+            <a href={GOOGLE_AUTH_URL} className="btn" style={{ width: '100%', padding: '12px', marginBottom: '0.75rem', gap: '8px' }}>
               <GoogleIcon /> Continue with Google
             </a>
             <button type="button" className="btn" style={{ width: '100%', padding: '10px', fontSize: '0.75rem' }} onClick={() => go('home')}>← Back</button>
