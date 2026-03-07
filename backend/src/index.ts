@@ -84,6 +84,15 @@ app.get('/api/qr-image', (_, res) => {
   res.status(404).json({ message: 'QR image not found' });
 });
 
+// Serve React frontend in production (same-domain, no CORS issues)
+if (process.env.NODE_ENV === 'production') {
+  const frontendDist = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendDist));
+  app.get('*', (_, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`JEE Arena backend running on http://localhost:${PORT}`);
 });
