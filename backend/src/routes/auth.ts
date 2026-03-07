@@ -22,6 +22,17 @@ passport.use(
           const email = profile.emails?.[0]?.value || undefined;
           const role = email && adminEmails.includes(email) ? 'admin' : 'student';
 
+          // Check if an email/password account exists with this email — link it
+          if (email) {
+            const existing = await User.findOne({ email: email.toLowerCase() });
+            if (existing) {
+              existing.googleId = profile.id;
+              if (!existing.picture) existing.picture = profile.photos?.[0]?.value || '';
+              await existing.save();
+              return done(null, existing);
+            }
+          }
+
           user = await User.create({
             googleId: profile.id,
             email,
