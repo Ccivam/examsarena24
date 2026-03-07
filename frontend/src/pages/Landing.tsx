@@ -610,6 +610,13 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
+      <footer style={{ textAlign: 'center', padding: '2rem 1rem', borderTop: '1px solid var(--c-border)', fontSize: '0.85rem', color: 'var(--c-ink-soft)' }}>
+        <span>© 2026 ExamArena24 · </span>
+        <a href="/privacy" style={{ color: 'var(--c-ink-soft)' }}>Privacy Policy</a>
+        <span> · </span>
+        <a href="/terms" style={{ color: 'var(--c-ink-soft)' }}>Terms of Service</a>
+      </footer>
+
     </div>
   );
 };
