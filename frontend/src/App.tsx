@@ -16,6 +16,8 @@ import TestSubmitted from './pages/TestSubmitted';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 // Layout with sidebar
 const AppLayout: React.FC = () => (
@@ -33,6 +35,8 @@ const App: React.FC = () => (
       <Routes>
         {/* Public */}
         <Route path="/" element={<Landing />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         {/* Test room — full screen, no sidebar */}
         <Route
