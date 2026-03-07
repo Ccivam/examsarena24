@@ -5,6 +5,7 @@ import passport from 'passport';
 import cors from 'cors';
 import path from 'path';
 import MongoStore from 'connect-mongo';
+import rateLimit from 'express-rate-limit';
 import { connectDB } from './config/db';
 import { startScheduler } from './utils/scheduler';
 
@@ -26,6 +27,26 @@ app.set('trust proxy', 1);
 
 // Connect to MongoDB and start scheduler
 connectDB().then(() => startScheduler());
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 10 * 1000, // 10 seconds
+  max: 100,            // 100 requests per IP per 10s
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,             // 10 auth attempts per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many attempts, please try again after a minute.' },
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/email', authLimiter);
 
 // Middleware
 app.use(
