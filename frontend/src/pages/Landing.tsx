@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../main';
+import { API_BASE } from '../config';
 
 const GOOGLE_AUTH_URL = `${API_BASE}/api/auth/google`;
 

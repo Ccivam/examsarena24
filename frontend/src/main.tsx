@@ -6,9 +6,7 @@ import './index.css';
 
 // In production, API calls go to the backend service URL.
 // In dev, Vite proxy handles /api → localhost:5000.
-export const API_BASE = window.location.hostname !== 'localhost'
-  ? 'https://examsarena24-production.up.railway.app'
-  : '';
+import { API_BASE } from './config';
 
 if (API_BASE) {
   axios.defaults.baseURL = API_BASE;
