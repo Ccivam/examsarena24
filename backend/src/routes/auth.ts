@@ -64,7 +64,8 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed` }),
   (req: Request, res: Response) => {
-    req.session.save(() => {
+    req.session.save((err) => {
+      if (err) console.error('Session save error after OAuth:', err);
       res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
     });
   }

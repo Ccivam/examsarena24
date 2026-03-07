@@ -41,8 +41,8 @@ app.use('/public', express.static(path.join(__dirname, '../public')));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'fallback_secret',
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: MongoStore.create({
       mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/jeearena',
     }),
