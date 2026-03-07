@@ -11,6 +11,7 @@ import { API_BASE } from './config';
 if (API_BASE) {
   axios.defaults.baseURL = API_BASE;
 }
+axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
