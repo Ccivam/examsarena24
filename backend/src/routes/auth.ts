@@ -40,19 +40,14 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
-  const id = (user as IUser)._id;
-  console.log('[Passport] serializeUser id:', id);
-  done(null, id);
+  done(null, (user as IUser)._id);
 });
 
 passport.deserializeUser(async (id: string, done) => {
   try {
-    console.log('[Passport] deserializeUser id:', id);
     const user = await User.findById(id);
-    console.log('[Passport] deserializeUser found user:', user ? user.email : 'null');
     done(null, user);
   } catch (error) {
-    console.error('[Passport] deserializeUser error:', error);
     done(error);
   }
 });
@@ -78,7 +73,6 @@ router.get(
 
 // Get current user
 router.get('/me', (req: Request, res: Response) => {
-  console.log('[/me] sessionID:', req.sessionID, 'isAuthenticated:', req.isAuthenticated(), 'session.passport:', (req.session as any).passport);
   if (req.isAuthenticated()) {
     const user = req.user as IUser;
     res.json({
