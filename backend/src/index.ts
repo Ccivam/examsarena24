@@ -21,6 +21,9 @@ import adminRoutes from './routes/admin';
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000');
 
+// Trust Railway's reverse proxy so secure cookies work over HTTPS
+app.set('trust proxy', 1);
+
 // Connect to MongoDB and start scheduler
 connectDB().then(() => startScheduler());
 
