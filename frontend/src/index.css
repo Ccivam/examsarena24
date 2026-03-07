@@ -541,15 +541,38 @@ h1, h2, h3, h4, .serif-text {
     z-index: 100;
     flex-direction: row;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.5rem;
     border-right: none;
     border-top: 1px solid var(--c-border);
   }
   .brand { display: none; }
-  .nav-menu { display: flex; flex: 1; gap: 0.5rem; }
+  .nav-menu {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    justify-content: space-around;
+  }
+  .nav-item { margin-bottom: 0; flex: 1; }
+  .nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 2px;
+    font-size: 0.6rem;
+    border-left: none;
+    border-top: 3px solid transparent;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .nav-link .nav-icon { font-size: 1.2rem; margin-bottom: 2px; display: block; }
+  .sidebar .section-label { display: none; }
+  .nav-link.active { border-left: none; border-top-color: var(--c-ink); }
   .user-profile { display: none; }
-  .view-section { padding: 1.5rem 1rem; }
-  .stats-grid { grid-template-columns: 1fr; }
+  .main-content { padding-bottom: 72px; }
+  .view-section { padding: 1.25rem 1rem 1.5rem; }
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .view-header { flex-wrap: wrap; gap: 0.75rem; }
 }
 
 /* Test timer */

@@ -18,64 +18,50 @@ const Sidebar: React.FC = () => {
       <nav className="nav-menu">
         <span className="section-label">Main</span>
         <div className="nav-item">
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Dashboard
+          <NavLink to="/dashboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">🏠</span>
+            <span>Home</span>
           </NavLink>
         </div>
         <div className="nav-item">
-          <NavLink
-            to="/upcoming"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Upcoming Exams
+          <NavLink to="/upcoming" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">📅</span>
+            <span>Upcoming</span>
           </NavLink>
         </div>
         <div className="nav-item">
-          <NavLink
-            to="/past"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Past Competitions
+          <NavLink to="/past" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">📋</span>
+            <span>Past</span>
           </NavLink>
         </div>
         <div className="nav-item">
-          <NavLink
-            to="/leaderboard"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Leaderboard
+          <NavLink to="/leaderboard" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">🏆</span>
+            <span>Ranks</span>
           </NavLink>
         </div>
 
         <span className="section-label" style={{ marginTop: '2rem' }}>Account</span>
         <div className="nav-item">
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-          >
-            Profile
+          <NavLink to="/profile" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">👤</span>
+            <span>Profile</span>
           </NavLink>
         </div>
         {(user?.role === 'admin' || user?.role === 'contributor') && (
           <div className="nav-item">
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-            >
-              {user.role === 'admin' ? 'Admin Panel' : 'Submit Problem'}
+            <NavLink to="/admin" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span className="nav-icon">⚙️</span>
+              <span>{user.role === 'admin' ? 'Admin' : 'Submit'}</span>
             </NavLink>
           </div>
         )}
         <div className="nav-item">
-          <button
-            onClick={handleLogout}
-            className="nav-link"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
-          >
-            Sign Out
+          <button onClick={handleLogout} className="nav-link"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}>
+            <span className="nav-icon">🚪</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </nav>
