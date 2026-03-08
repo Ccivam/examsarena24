@@ -6,6 +6,10 @@ import User from '../models/User';
 import Result from '../models/Result';
 import Submission from '../models/Submission';
 import { isAdmin } from '../middleware/auth';
+import { IUser } from '../models/User';
+
+const canManageTest = (test: any, user: IUser) =>
+  user.role === 'super_admin' || test.createdBy.toString() === user._id.toString();
 
 const router = express.Router();
 
@@ -44,12 +48,12 @@ router.get('/stats', isAdmin, async (req: Request, res: Response) => {
 // Publish solutions for a test
 router.put('/tests/:id/publish-solutions', isAdmin, async (req: Request, res: Response) => {
   try {
-    const test = await Test.findByIdAndUpdate(
-      req.params.id,
-      { solutionPublishedAt: new Date() },
-      { new: true }
-    );
+    const user = req.user as IUser;
+    const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ message: 'Test not found' });
+    if (!canManageTest(test, user)) return res.status(403).json({ message: 'Not your test' });
+    test.solutionPublishedAt = new Date();
+    await test.save();
     res.json({ message: 'Solutions published', test });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -59,16 +63,16 @@ router.put('/tests/:id/publish-solutions', isAdmin, async (req: Request, res: Re
 // Publish leaderboard for a test
 router.put('/tests/:id/publish-leaderboard', isAdmin, async (req: Request, res: Response) => {
   try {
+    const user = req.user as IUser;
+    const test = await Test.findById(req.params.id);
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    if (!canManageTest(test, user)) return res.status(403).json({ message: 'Not your test' });
     const resultsExist = await Result.countDocuments({ test: req.params.id });
     if (resultsExist === 0) {
       return res.status(400).json({ message: 'Calculate results first before publishing leaderboard.' });
     }
-    const test = await Test.findByIdAndUpdate(
-      req.params.id,
-      { leaderboardPublishedAt: new Date() },
-      { new: true }
-    );
-    if (!test) return res.status(404).json({ message: 'Test not found' });
+    test.leaderboardPublishedAt = new Date();
+    await test.save();
     res.json({ message: 'Leaderboard published', test });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -78,9 +82,13 @@ router.put('/tests/:id/publish-leaderboard', isAdmin, async (req: Request, res: 
 // Change test status (upcoming -> live -> completed)
 router.put('/tests/:id/status', isAdmin, async (req: Request, res: Response) => {
   try {
+    const user = req.user as IUser;
     const { status } = req.body;
-    const test = await Test.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ message: 'Test not found' });
+    if (!canManageTest(test, user)) return res.status(403).json({ message: 'Not your test' });
+    test.status = status;
+    await test.save();
     res.json({ message: `Test status updated to ${status}`, test });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -102,14 +110,14 @@ router.get('/problems/approved', isAdmin, async (req: Request, res: Response) =>
 // Update problems list on a test
 router.put('/tests/:id/problems', isAdmin, async (req: Request, res: Response) => {
   try {
-    const { problemIds } = req.body; // array of problem IDs in order
-    const problems = problemIds.map((id: string, i: number) => ({ problem: id, order: i + 1 }));
-    const test = await Test.findByIdAndUpdate(
-      req.params.id,
-      { problems },
-      { new: true }
-    ).populate('problems.problem', 'title subject');
+    const user = req.user as IUser;
+    const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ message: 'Test not found' });
+    if (!canManageTest(test, user)) return res.status(403).json({ message: 'Not your test' });
+    const { problemIds } = req.body;
+    test.problems = problemIds.map((id: string, i: number) => ({ problem: id, order: i + 1 }));
+    await test.save();
+    await test.populate('problems.problem', 'title subject');
     res.json(test);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
