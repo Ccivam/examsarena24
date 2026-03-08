@@ -74,13 +74,9 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     // Cleanup OTP
     await OtpCode.deleteMany({ identifier: email.toLowerCase().trim(), purpose: 'register' });
 
-    // Check admin / super_admin
+    // Check admin
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
-    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim());
-    const normalizedEmail = email.toLowerCase().trim();
-    const role = superAdminEmails.includes(normalizedEmail) ? 'super_admin'
-      : adminEmails.includes(normalizedEmail) ? 'admin'
-      : 'student';
+    const role = adminEmails.includes(email.toLowerCase().trim()) ? 'admin' : 'student';
 
     const user = new User({ name: name.trim(), email: email.toLowerCase().trim(), password, role, emailVerified: true });
     await user.save();

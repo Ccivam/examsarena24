@@ -19,11 +19,8 @@ passport.use(
 
         if (!user) {
           const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim());
-          const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map((e) => e.trim());
           const email = profile.emails?.[0]?.value || undefined;
-          const role = email && superAdminEmails.includes(email) ? 'super_admin'
-            : email && adminEmails.includes(email) ? 'admin'
-            : 'student';
+          const role = email && adminEmails.includes(email) ? 'admin' : 'student';
 
           // Check if an email/password account exists with this email — link it
           if (email) {
