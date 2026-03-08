@@ -95,6 +95,21 @@ router.put('/tests/:id/status', isAdmin, async (req: Request, res: Response) => 
   }
 });
 
+// Get tests created by current admin
+router.get('/my-tests', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as IUser;
+    const filter = user.role === 'super_admin' ? {} : { createdBy: user._id };
+    const tests = await Test.find(filter)
+      .select('-problems')
+      .sort({ startTime: -1 })
+      .populate('createdBy', 'name');
+    res.json(tests);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all approved problems (for adding to a test)
 router.get('/problems/approved', isAdmin, async (req: Request, res: Response) => {
   try {

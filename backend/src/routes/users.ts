@@ -4,6 +4,7 @@ import Result from '../models/Result';
 import Registration from '../models/Registration';
 import PracticeSolve from '../models/PracticeSolve';
 import { isAuthenticated, isAdmin, isSuperAdmin } from '../middleware/auth';
+import Test from '../models/Test';
 import { IUser } from '../models/User';
 
 const router = express.Router();
@@ -66,6 +67,14 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
       : 0;
     const problemsSolved = await PracticeSolve.countDocuments({ user: user._id, correct: true });
 
+    // For admins: include tests they organized
+    let organizedTests: any[] = [];
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      organizedTests = await Test.find({ createdBy: user._id })
+        .select('title type startTime endTime status fee solutionPublishedAt leaderboardPublishedAt')
+        .sort({ startTime: -1 });
+    }
+
     res.json({
       user: {
         _id: user._id,
@@ -79,6 +88,7 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
       stats: { totalTests, avgScore, bestRank, problemsSolved },
       results,
       registrations,
+      organizedTests,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

@@ -57,7 +57,7 @@ const AdminPanel: React.FC = () => {
     if (tab === 'overview') {
       axios.get('/api/admin/stats', { withCredentials: true }).then(r => setStats(r.data));
     } else if (tab === 'tests') {
-      axios.get('/api/tests', { withCredentials: true }).then(r => setTests(r.data));
+      axios.get('/api/admin/my-tests', { withCredentials: true }).then(r => setTests(r.data));
     } else if (tab === 'problems') {
       axios.get('/api/admin/problems', { withCredentials: true }).then(r => setProblems(r.data));
     } else if (tab === 'post-discussion') {
@@ -81,7 +81,7 @@ const AdminPanel: React.FC = () => {
         fee: 0, registrationDeadline: '', maxParticipants: 10000,
       });
       // Refresh tests and switch to tests tab
-      const testsRes = await axios.get('/api/tests', { withCredentials: true });
+      const testsRes = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(testsRes.data);
       setTab('tests');
     } catch (err: any) {
@@ -135,7 +135,7 @@ const AdminPanel: React.FC = () => {
       showMessage(`${selectedProblemIds.length} questions saved to "${managingTest.title}"`);
       setManagingTest(null);
       // Refresh tests
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage('Failed to save questions', 'error');
@@ -160,7 +160,7 @@ const AdminPanel: React.FC = () => {
     try {
       const r = await axios.post(`/api/tests/${testId}/calculate-results`, {}, { withCredentials: true });
       showMessage(r.data.message);
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error', 'error');
@@ -171,7 +171,7 @@ const AdminPanel: React.FC = () => {
     try {
       await axios.put(`/api/admin/tests/${testId}/publish-solutions`, {}, { withCredentials: true });
       showMessage('Solutions published!');
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error publishing solutions', 'error');
@@ -182,7 +182,7 @@ const AdminPanel: React.FC = () => {
     try {
       await axios.put(`/api/admin/tests/${testId}/publish-leaderboard`, {}, { withCredentials: true });
       showMessage('Leaderboard published!');
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error publishing leaderboard', 'error');

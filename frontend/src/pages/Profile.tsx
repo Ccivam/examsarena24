@@ -10,6 +10,7 @@ interface ProfileData {
   stats: { totalTests: number; avgScore: number; bestRank: number; problemsSolved: number };
   results: Result[];
   registrations: Registration[];
+  organizedTests: { _id: string; title: string; type: string; startTime: string; endTime: string; status: string; fee: number; solutionPublishedAt?: string; leaderboardPublishedAt?: string }[];
 }
 
 const Profile: React.FC = () => {
@@ -28,7 +29,7 @@ const Profile: React.FC = () => {
   if (loading) return <div className="loading-container">Loading profile...</div>;
   if (!data) return null;
 
-  const { stats, results, registrations } = data;
+  const { stats, results, registrations, organizedTests = [] } = data;
 
   return (
     <section className="view-section">
@@ -198,6 +199,52 @@ const Profile: React.FC = () => {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </>
+      )}
+      {/* Tests Organized (admin/super_admin) */}
+      {organizedTests.length > 0 && (
+        <>
+          <span className="section-label" style={{ marginTop: '3rem' }}>Tests Organized</span>
+          <table className="table-container">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Fee</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {organizedTests.map(t => (
+                <tr key={t._id}>
+                  <td style={{ fontWeight: 500 }}>{t.title}</td>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>{t.type.replace('_', ' ')}</td>
+                  <td style={{ fontSize: '0.8rem' }}>{new Date(t.startTime).toLocaleDateString('en-IN')}</td>
+                  <td>{t.fee > 0 ? `₹${t.fee}` : 'Free'}</td>
+                  <td><span className={`status-badge status-${t.status}`}>{t.status}</span></td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <Link to={`/test/${t._id}`} className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}>
+                        View
+                      </Link>
+                      {t.solutionPublishedAt && (
+                        <Link to={`/test/${t._id}/review`} className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}>
+                          Solutions
+                        </Link>
+                      )}
+                      {t.leaderboardPublishedAt && (
+                        <Link to={`/leaderboard/test/${t._id}`} className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}>
+                          Leaderboard
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </>

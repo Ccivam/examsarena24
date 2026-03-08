@@ -13,12 +13,9 @@ const router = express.Router();
 // Get all tests (upcoming and past)
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const user = req.user as IUser;
     const { status } = req.query;
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status as string;
-    // Regular admins only see their own tests; students and super_admin see all
-    if (user.role === 'admin') filter.createdBy = user._id;
 
     const tests = await Test.find(filter)
       .select('-problems')
