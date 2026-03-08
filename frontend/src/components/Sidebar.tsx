@@ -48,6 +48,12 @@ const Sidebar: React.FC = () => {
             <span>Problems</span>
           </NavLink>
         </div>
+        <div className="nav-item">
+          <NavLink to="/discussions" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">💬</span>
+            <span>Discussion</span>
+          </NavLink>
+        </div>
 
         <span className="section-label" style={{ marginTop: '2rem' }}>Account</span>
         <div className="nav-item">

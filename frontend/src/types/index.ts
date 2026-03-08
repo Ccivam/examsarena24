@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email?: string | null;
   picture: string;
-  role: 'student' | 'admin' | 'contributor';
+  role: 'student' | 'admin' | 'contributor' | 'super_admin';
 }
 
 export interface Test {
@@ -91,6 +91,26 @@ export interface Result {
   wrongAnswers: number;
   unattempted: number;
   calculatedAt: string;
+}
+
+export interface Comment {
+  _id: string;
+  author: { _id: string; name: string; picture: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
+export interface Discussion {
+  _id: string;
+  title: string;
+  content: string;
+  type: 'editorial' | 'announcement' | 'general';
+  test?: { _id: string; title: string } | null;
+  author: { _id: string; name: string; picture: string; role: string };
+  comments: Comment[];
+  commentCount?: number;
+  pinned: boolean;
+  createdAt: string;
 }
 
 export interface LeaderboardEntry {
