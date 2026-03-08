@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import User from '../models/User';
 import Result from '../models/Result';
 import Registration from '../models/Registration';
+import PracticeSolve from '../models/PracticeSolve';
 import { isAuthenticated, isAdmin } from '../middleware/auth';
 import { IUser } from '../models/User';
 
@@ -28,6 +29,7 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
     const bestRank = totalTests > 0
       ? Math.min(...results.map(r => r.rank))
       : 0;
+    const problemsSolved = await PracticeSolve.countDocuments({ user: user._id, correct: true });
 
     res.json({
       user: {
@@ -38,7 +40,7 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
         role: user.role,
         createdAt: (user as any).createdAt,
       },
-      stats: { totalTests, avgScore, bestRank },
+      stats: { totalTests, avgScore, bestRank, problemsSolved },
       results,
       registrations,
     });

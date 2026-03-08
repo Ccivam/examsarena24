@@ -7,7 +7,7 @@ import { Result, Registration, Test } from '../types';
 
 interface ProfileData {
   user: { _id: string; name: string; email: string; picture: string; role: string; createdAt: string };
-  stats: { totalTests: number; avgScore: number; bestRank: number };
+  stats: { totalTests: number; avgScore: number; bestRank: number; problemsSolved: number };
   results: Result[];
   registrations: Registration[];
 }
@@ -99,6 +99,10 @@ const Profile: React.FC = () => {
         <div className="stat-card">
           <span className="stat-value">{stats.bestRank > 0 ? `#${stats.bestRank}` : '—'}</span>
           <span className="stat-label">Best Rank</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.problemsSolved ?? 0}</span>
+          <span className="stat-label">Problems Solved</span>
         </div>
       </div>
 

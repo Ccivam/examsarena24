@@ -18,6 +18,8 @@ import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Problems from './pages/Problems';
+import ProblemSolve from './pages/ProblemSolve';
 
 // Layout with sidebar
 const AppLayout: React.FC = () => (
@@ -73,6 +75,8 @@ const App: React.FC = () => (
           <Route path="/test/:id/review" element={<TestReview />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/leaderboard/test/:testId" element={<Leaderboard />} />
+          <Route path="/problems" element={<Problems />} />
+          <Route path="/problems/:id" element={<ProblemSolve />} />
           <Route path="/profile" element={<Profile />} />
           <Route
             path="/admin"
