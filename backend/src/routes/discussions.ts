@@ -98,16 +98,19 @@ router.delete('/:id/comments/:commentId', isAuthenticated, async (req: Request, 
     const discussion = await Discussion.findById(req.params.id);
     if (!discussion) return res.status(404).json({ message: 'Discussion not found' });
 
-    const comment = discussion.comments.id(req.params.commentId);
-    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+    const commentIndex = discussion.comments.findIndex(
+      c => c._id.toString() === req.params.commentId
+    );
+    if (commentIndex === -1) return res.status(404).json({ message: 'Comment not found' });
 
+    const comment = discussion.comments[commentIndex];
     const isOwner = comment.author.toString() === user._id.toString();
     const isAdminUser = user.role === 'admin' || user.role === 'super_admin';
     if (!isOwner && !isAdminUser) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    comment.deleteOne();
+    discussion.comments.splice(commentIndex, 1);
     await discussion.save();
     res.json({ message: 'Comment deleted' });
   } catch (error) {
