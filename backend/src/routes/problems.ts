@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import Problem from '../models/Problem';
 import PracticeSolve from '../models/PracticeSolve';
+import Test from '../models/Test';
 import { isAuthenticated, isAdmin, isAdminOrContributor } from '../middleware/auth';
 import { IUser } from '../models/User';
 
@@ -14,8 +15,16 @@ router.get('/practice', isAuthenticated, async (req: Request, res: Response) => 
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const total = await Problem.countDocuments({ status: 'approved' });
-    const problems = await Problem.find({ status: 'approved' })
+    // Only show problems from tests that have already ended
+    const endedTests = await Test.find({ endTime: { $lt: new Date() } }).select('problems');
+    const eligibleProblemIds = [...new Set(
+      endedTests.flatMap(t => t.problems.map(p => p.problem.toString()))
+    )];
+
+    const filter = { status: 'approved', _id: { $in: eligibleProblemIds } };
+
+    const total = await Problem.countDocuments(filter);
+    const problems = await Problem.find(filter)
       .select('title subject difficulty tags')
       .sort({ createdAt: -1 })
       .skip(skip)
