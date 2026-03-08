@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Test, Problem } from '../types';
 
-type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem';
+type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem' | 'post-discussion' | 'users';
 
 const emptyProblemForm = {
   title: '', content: '', subject: 'Physics',
@@ -23,7 +23,6 @@ const AdminPanel: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [tests, setTests] = useState<Test[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
-  const [problemFilter, setProblemFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
@@ -36,6 +35,13 @@ const AdminPanel: React.FC = () => {
 
   // Problem form
   const [problemForm, setProblemForm] = useState(emptyProblemForm);
+
+  // Discussion form
+  const [discussionForm, setDiscussionForm] = useState({ title: '', content: '', type: 'general', test: '', pinned: false });
+  const [completedTests, setCompletedTests] = useState<Test[]>([]);
+
+  // Users management (super_admin)
+  const [users, setUsers] = useState<any[]>([]);
 
   // Problem picker for a test
   const [managingTest, setManagingTest] = useState<Test | null>(null);
@@ -51,14 +57,17 @@ const AdminPanel: React.FC = () => {
     if (tab === 'overview') {
       axios.get('/api/admin/stats', { withCredentials: true }).then(r => setStats(r.data));
     } else if (tab === 'tests') {
-      axios.get('/api/tests', { withCredentials: true }).then(r => setTests(r.data));
+      axios.get('/api/admin/my-tests', { withCredentials: true }).then(r => setTests(r.data));
     } else if (tab === 'problems') {
-      const url = problemFilter === 'all'
-        ? '/api/admin/problems'
-        : `/api/admin/problems?status=${problemFilter}`;
-      axios.get(url, { withCredentials: true }).then(r => setProblems(r.data));
+      axios.get('/api/admin/problems', { withCredentials: true }).then(r => setProblems(r.data));
+    } else if (tab === 'post-discussion') {
+      axios.get('/api/tests', { withCredentials: true }).then(r =>
+        setCompletedTests(r.data.filter((t: Test) => new Date(t.endTime) < new Date()))
+      );
+    } else if (tab === 'users') {
+      axios.get('/api/users', { withCredentials: true }).then(r => setUsers(r.data));
     }
-  }, [tab, problemFilter]);
+  }, [tab]);
 
   // ── Create Test ──────────────────────────────────────────────────────────
   const handleCreateTest = async (e: React.FormEvent) => {
@@ -72,7 +81,7 @@ const AdminPanel: React.FC = () => {
         fee: 0, registrationDeadline: '', maxParticipants: 10000,
       });
       // Refresh tests and switch to tests tab
-      const testsRes = await axios.get('/api/tests', { withCredentials: true });
+      const testsRes = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(testsRes.data);
       setTab('tests');
     } catch (err: any) {
@@ -87,13 +96,12 @@ const AdminPanel: React.FC = () => {
       await axios.post('/api/problems', {
         ...problemForm,
         tags: problemForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-        status: user?.role === 'admin' ? 'approved' : 'pending',
+        status: 'approved',
       }, { withCredentials: true });
-      showMessage(user?.role === 'admin' ? 'Problem created and approved!' : 'Problem submitted for review!');
+      showMessage('Problem created!');
       setProblemForm(emptyProblemForm); // reset form
       // Reload problems list
-      const url = problemFilter === 'all' ? '/api/admin/problems' : `/api/admin/problems?status=${problemFilter}`;
-      axios.get(url, { withCredentials: true }).then(r => setProblems(r.data));
+      axios.get('/api/admin/problems', { withCredentials: true }).then(r => setProblems(r.data));
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Failed to create problem', 'error');
     }
@@ -127,7 +135,7 @@ const AdminPanel: React.FC = () => {
       showMessage(`${selectedProblemIds.length} questions saved to "${managingTest.title}"`);
       setManagingTest(null);
       // Refresh tests
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage('Failed to save questions', 'error');
@@ -152,7 +160,7 @@ const AdminPanel: React.FC = () => {
     try {
       const r = await axios.post(`/api/tests/${testId}/calculate-results`, {}, { withCredentials: true });
       showMessage(r.data.message);
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error', 'error');
@@ -163,7 +171,7 @@ const AdminPanel: React.FC = () => {
     try {
       await axios.put(`/api/admin/tests/${testId}/publish-solutions`, {}, { withCredentials: true });
       showMessage('Solutions published!');
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error publishing solutions', 'error');
@@ -174,30 +182,56 @@ const AdminPanel: React.FC = () => {
     try {
       await axios.put(`/api/admin/tests/${testId}/publish-leaderboard`, {}, { withCredentials: true });
       showMessage('Leaderboard published!');
-      const res = await axios.get('/api/tests', { withCredentials: true });
+      const res = await axios.get('/api/admin/my-tests', { withCredentials: true });
       setTests(res.data);
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Error publishing leaderboard', 'error');
     }
   };
 
-  const isContributor = user?.role === 'contributor';
+  // ── Post Discussion ──────────────────────────────────────────────────────
+  const handlePostDiscussion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await axios.post('/api/discussions', {
+        ...discussionForm,
+        test: discussionForm.test || undefined,
+      }, { withCredentials: true });
+      showMessage('Discussion posted!');
+      setDiscussionForm({ title: '', content: '', type: 'general', test: '', pinned: false });
+    } catch (err: any) {
+      showMessage(err.response?.data?.message || 'Failed to post discussion', 'error');
+    }
+  };
 
-  const tabs: { id: Tab; label: string }[] = isContributor
-    ? [{ id: 'create-problem', label: '+ Submit Problem' }]
-    : [
-        { id: 'overview', label: 'Overview' },
-        { id: 'tests', label: 'Tests' },
-        { id: 'problems', label: `Problems${stats?.pendingProblems > 0 ? ` (${stats.pendingProblems})` : ''}` },
-        { id: 'create-test', label: '+ New Test' },
-        { id: 'create-problem', label: '+ New Problem' },
-      ];
+  // ── User role change ─────────────────────────────────────────────────────
+  const handleRoleChange = async (userId: string, role: string) => {
+    try {
+      const res = await axios.put(`/api/users/${userId}/role`, { role }, { withCredentials: true });
+      setUsers(users.map(u => u._id === userId ? res.data : u));
+      showMessage(`Role updated to ${role}`);
+    } catch (err: any) {
+      showMessage(err.response?.data?.message || 'Failed to update role', 'error');
+    }
+  };
+
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'tests', label: 'Tests' },
+    { id: 'problems', label: 'Problems' },
+    { id: 'create-test', label: '+ New Test' },
+    { id: 'create-problem', label: '+ New Problem' },
+    { id: 'post-discussion', label: '+ Post Discussion' },
+    ...(isSuperAdmin ? [{ id: 'users' as Tab, label: 'Users' }] : []),
+  ];
 
   return (
     <section className="view-section">
       <div className="view-header">
         <div>
-          <h2 className="view-title">{isContributor ? 'Submit Problem' : 'Admin Panel'}</h2>
+          <h2 className="view-title">Admin Panel</h2>
           <p className="view-subtitle">Manage tests, problems, and registrations.</p>
         </div>
       </div>
@@ -395,19 +429,8 @@ const AdminPanel: React.FC = () => {
       {/* ── Problems ── */}
       {tab === 'problems' && (
         <div>
-          {/* Filter */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            {(['all', 'pending', 'approved'] as const).map(f => (
-              <button key={f} onClick={() => setProblemFilter(f)}
-                className={problemFilter === f ? 'btn btn-primary' : 'btn'}
-                style={{ fontSize: '0.75rem', padding: '6px 14px', textTransform: 'capitalize' }}>
-                {f}
-              </button>
-            ))}
-          </div>
-
           {problems.length === 0 ? (
-            <div className="empty-state">No problems found.</div>
+            <div className="empty-state">No problems yet. Create one from the + New Problem tab.</div>
           ) : (
             <table className="table-container">
               <thead>
@@ -416,8 +439,7 @@ const AdminPanel: React.FC = () => {
                   <th>Subject</th>
                   <th>Difficulty</th>
                   <th>By</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>Tags</th>
                 </tr>
               </thead>
               <tbody>
@@ -429,21 +451,8 @@ const AdminPanel: React.FC = () => {
                     <td style={{ fontSize: '0.85rem', color: 'var(--c-ink-soft)' }}>
                       {typeof p.author === 'object' ? p.author.name : 'Unknown'}
                     </td>
-                    <td><span className={`status-badge status-${p.status === 'approved' ? 'verified' : p.status === 'pending' ? 'pending' : 'rejected'}`}>{p.status}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {p.status === 'pending' && (
-                          <>
-                            <button className="btn btn-primary" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
-                              onClick={() => handleProblemStatus(p._id, 'approved')}>Approve</button>
-                            <button className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
-                              onClick={() => handleProblemStatus(p._id, 'rejected')}>Reject</button>
-                          </>
-                        )}
-                        {p.status === 'approved' && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>Ready to use</span>
-                        )}
-                      </div>
+                    <td style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
+                      {p.tags?.join(', ') || '—'}
                     </td>
                   </tr>
                 ))}
@@ -505,7 +514,7 @@ const AdminPanel: React.FC = () => {
       {/* ── Create Problem ── */}
       {tab === 'create-problem' && (
         <form onSubmit={handleCreateProblem} style={{ maxWidth: '700px' }}>
-          <span className="section-label">{user?.role === 'admin' ? 'Create Problem' : 'Submit Problem for Review'}</span>
+          <span className="section-label">Create Problem</span>
           <div className="form-group">
             <label className="form-label">Title *</label>
             <input className="form-input" required value={problemForm.title}
@@ -580,9 +589,117 @@ const AdminPanel: React.FC = () => {
               placeholder="kinematics, projectile, mechanics" />
           </div>
           <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px' }}>
-            {user?.role === 'admin' ? 'Create Problem' : 'Submit for Review'}
+            Create Problem
           </button>
         </form>
+      )}
+
+      {/* ── Post Discussion ── */}
+      {tab === 'post-discussion' && (
+        <form onSubmit={handlePostDiscussion} style={{ maxWidth: '700px' }}>
+          <span className="section-label">Post Discussion / Editorial</span>
+          <div className="form-group">
+            <label className="form-label">Title *</label>
+            <input className="form-input" required value={discussionForm.title}
+              onChange={e => setDiscussionForm({ ...discussionForm, title: e.target.value })}
+              placeholder="e.g. JEE Mains Mock #3 — Full Editorial" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-input" value={discussionForm.type}
+                onChange={e => setDiscussionForm({ ...discussionForm, type: e.target.value })}>
+                <option value="editorial">Editorial</option>
+                <option value="announcement">Announcement</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Link to Test (optional)</label>
+              <select className="form-input" value={discussionForm.test}
+                onChange={e => setDiscussionForm({ ...discussionForm, test: e.target.value })}>
+                <option value="">— No test —</option>
+                {completedTests.map(t => (
+                  <option key={t._id} value={t._id}>{t.title}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Content * (plain text or HTML)</label>
+            <textarea className="form-input" required rows={12} value={discussionForm.content}
+              onChange={e => setDiscussionForm({ ...discussionForm, content: e.target.value })}
+              placeholder="Write the editorial, solution approach, or announcement here..." />
+          </div>
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <input type="checkbox" id="pinned" checked={discussionForm.pinned}
+              onChange={e => setDiscussionForm({ ...discussionForm, pinned: e.target.checked })} />
+            <label htmlFor="pinned" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Pin this post (shows at top)</label>
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px' }}>
+            Post Discussion
+          </button>
+        </form>
+      )}
+
+      {/* ── Users (super_admin only) ── */}
+      {tab === 'users' && (
+        <div>
+          <p style={{ color: 'var(--c-ink-soft)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+            Manage user roles. Promote trusted members to admin to co-organize tests.
+          </p>
+          {users.length === 0 ? (
+            <div className="empty-state">No users found.</div>
+          ) : (
+            <table className="table-container">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Current Role</th>
+                  <th>Joined</th>
+                  <th>Change Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u: any) => (
+                  <tr key={u._id}>
+                    <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {u.picture && <img src={u.picture} alt={u.name} style={{ width: 24, height: 24, borderRadius: '50%' }} />}
+                      <span style={{ fontWeight: 500 }}>{u.name}</span>
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)' }}>{u.email}</td>
+                    <td>
+                      <span className={`status-badge status-${u.role === 'super_admin' ? 'live' : u.role === 'admin' ? 'verified' : 'free'}`}
+                        style={{ textTransform: 'capitalize' }}>
+                        {u.role === 'super_admin' ? 'Owner' : u.role}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)' }}>
+                      {new Date(u.createdAt).toLocaleDateString('en-IN')}
+                    </td>
+                    <td>
+                      {u._id !== user?._id ? (
+                        <select
+                          value={u.role}
+                          onChange={e => handleRoleChange(u._id, e.target.value)}
+                          className="form-input"
+                          style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto' }}
+                        >
+                          <option value="student">Student</option>
+                          <option value="admin">Admin</option>
+                          <option value="super_admin">Owner</option>
+                        </select>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>You</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </section>
   );

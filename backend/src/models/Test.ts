@@ -57,4 +57,8 @@ const TestSchema = new Schema<ITest>(
   { timestamps: true }
 );
 
+TestSchema.index({ status: 1 });
+TestSchema.index({ endTime: 1 });
+TestSchema.index({ createdBy: 1 });
+
 export default mongoose.model<ITest>('Test', TestSchema);

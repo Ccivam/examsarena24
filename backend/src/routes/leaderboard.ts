@@ -38,7 +38,7 @@ router.get('/global', isAuthenticated, async (req: Request, res: Response) => {
     const statsMap = new Map(userStats.map((s) => [s._id.toString(), s]));
 
     // Fetch all users
-    const allUsers = await User.find({}, 'name picture _id').lean();
+    const allUsers = await User.find({}, 'name picture _id username').lean();
 
     // Merge: users with stats get avgScore, others get null
     const merged = allUsers.map((u) => {
@@ -49,7 +49,7 @@ router.get('/global', isAuthenticated, async (req: Request, res: Response) => {
         totalTests: stats?.totalTests ?? 0,
         bestRank: stats?.bestRank ?? null as number | null,
         totalScore: stats?.totalScore ?? 0,
-        user: { _id: u._id.toString(), name: u.name, picture: u.picture },
+        user: { _id: u._id.toString(), name: u.name, picture: u.picture, username: (u as any).username || null },
       };
     });
 

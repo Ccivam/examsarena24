@@ -42,6 +42,18 @@ const Sidebar: React.FC = () => {
             <span>Ranks</span>
           </NavLink>
         </div>
+        <div className="nav-item">
+          <NavLink to="/problems" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">🧩</span>
+            <span>Problems</span>
+          </NavLink>
+        </div>
+        <div className="nav-item">
+          <NavLink to="/discussions" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <span className="nav-icon">💬</span>
+            <span>Discussion</span>
+          </NavLink>
+        </div>
 
         <span className="section-label" style={{ marginTop: '2rem' }}>Account</span>
         <div className="nav-item">
@@ -50,11 +62,11 @@ const Sidebar: React.FC = () => {
             <span>Profile</span>
           </NavLink>
         </div>
-        {(user?.role === 'admin' || user?.role === 'contributor') && (
+        {(user?.role === 'admin' || user?.role === 'super_admin') && (
           <div className="nav-item">
             <NavLink to="/admin" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <span className="nav-icon">⚙️</span>
-              <span>{user.role === 'admin' ? 'Admin' : 'Submit'}</span>
+              <span>Admin</span>
             </NavLink>
           </div>
         )}

@@ -14,6 +14,7 @@ const Leaderboard: React.FC = () => {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const url = testId
@@ -52,7 +53,19 @@ const Leaderboard: React.FC = () => {
             {testId ? 'Top performers in this test.' : 'All-time rankings based on average performance.'}
           </p>
         </div>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        {!testId && (
+          <input
+            type="text"
+            placeholder="Search by name or @username"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="form-input"
+            style={{ width: 220, padding: '7px 12px', fontSize: '0.82rem' }}
+          />
+        )}
         {testId && <Link to="/leaderboard" className="btn">Global Rankings</Link>}
+      </div>
       </div>
 
       {error ? (
@@ -66,6 +79,16 @@ const Leaderboard: React.FC = () => {
             </div>
           )}
 
+          {(() => {
+            const filtered = search.trim()
+              ? (entries as any[]).filter(e => {
+                  const u = e.user;
+                  const q = search.toLowerCase();
+                  return u?.name?.toLowerCase().includes(q) || u?.username?.toLowerCase().includes(q);
+                })
+              : entries;
+
+            return (
           <table className="table-container">
             <thead>
               <tr>
@@ -88,7 +111,7 @@ const Leaderboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry, idx) => {
+              {filtered.map((entry: any, idx: number) => {
                 const globalIdx = (page - 1) * 50 + idx + 1;
                 const isMe = testId
                   ? (entry as Result).user && typeof (entry as Result).user === 'object'
@@ -108,9 +131,27 @@ const Leaderboard: React.FC = () => {
                       }
                     </td>
                     <td style={{ fontWeight: isMe ? 600 : 400 }}>
-                      {testId
-                        ? `${typeof (entry as Result).user === 'object' ? ((entry as Result).user as any).name : 'Student'}${isMe ? ' (You)' : ''}`
-                        : `${(entry as LeaderboardEntry).user?.name || 'Student'}${isMe ? ' (You)' : ''}`}
+                      {(() => {
+                        const u = testId
+                          ? (typeof (entry as Result).user === 'object' ? (entry as Result).user as any : null)
+                          : (entry as LeaderboardEntry).user;
+                        const userId = u?._id;
+                        const name = u?.name || 'Student';
+                        const uname = u?.username;
+                        return (
+                          <span>
+                            {userId ? (
+                              <Link to={`/user/${userId}`} style={{ color: 'inherit', textDecoration: 'none' }}
+                                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}>
+                                {name}
+                              </Link>
+                            ) : name}
+                            {uname && <span style={{ color: 'var(--c-ink-soft)', fontSize: '0.75rem', marginLeft: '0.4rem' }}>@{uname}</span>}
+                            {isMe && <span style={{ color: 'var(--c-ink-soft)', fontSize: '0.78rem', marginLeft: '0.4rem' }}>(You)</span>}
+                          </span>
+                        );
+                      })()}
                     </td>
                     {testId ? (
                       <>
@@ -135,6 +176,8 @@ const Leaderboard: React.FC = () => {
               })}
             </tbody>
           </table>
+            );
+          })()}
 
           {/* Pagination */}
           {totalPages > 1 && (

@@ -14,7 +14,7 @@ const router = express.Router();
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { status } = req.query;
-    const filter: Record<string, string> = {};
+    const filter: Record<string, unknown> = {};
     if (status) filter.status = status as string;
 
     const tests = await Test.find(filter)
@@ -251,6 +251,12 @@ router.put('/:id', isAdmin, async (req: Request, res: Response) => {
 // Admin: Manually recalculate results for a test
 router.post('/:id/calculate-results', isAdmin, async (req: Request, res: Response) => {
   try {
+    const user = req.user as IUser;
+    const test = await Test.findById(req.params.id);
+    if (!test) return res.status(404).json({ message: 'Test not found' });
+    if (user.role !== 'super_admin' && test.createdBy.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: 'Not your test' });
+    }
     const count = await calculateResultsForTest(req.params.id);
     res.json({ message: `Results calculated for ${count} participants` });
   } catch (error: any) {

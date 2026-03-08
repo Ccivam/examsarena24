@@ -2,15 +2,52 @@ import express, { Request, Response } from 'express';
 import User from '../models/User';
 import Result from '../models/Result';
 import Registration from '../models/Registration';
-import { isAuthenticated, isAdmin } from '../middleware/auth';
+import PracticeSolve from '../models/PracticeSolve';
+import { isAuthenticated, isAdmin, isSuperAdmin } from '../middleware/auth';
+import Test from '../models/Test';
 import { IUser } from '../models/User';
 
 const router = express.Router();
 
+// Check username availability
+router.get('/check-username', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const u = (req.query.u as string || '').toLowerCase().trim();
+    if (!u) return res.status(400).json({ message: 'Username required' });
+    if (!/^[a-z0-9_]{3,8}$/.test(u)) {
+      return res.json({ available: false, message: '3–8 chars, letters/numbers/underscore only' });
+    }
+    const exists = await User.findOne({ username: u });
+    res.json({ available: !exists });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Set / update username
+router.put('/set-username', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const currentUser = req.user as IUser;
+    const username = (req.body.username as string || '').toLowerCase().trim();
+    if (!username) return res.status(400).json({ message: 'Username required' });
+    if (!/^[a-z0-9_]{3,8}$/.test(username)) {
+      return res.status(400).json({ message: '3–8 chars, letters/numbers/underscore only' });
+    }
+    const exists = await User.findOne({ username, _id: { $ne: currentUser._id } });
+    if (exists) return res.status(400).json({ message: 'Username already taken' });
+    const updated = await User.findByIdAndUpdate(currentUser._id, { username }, { new: true }).select('-password');
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get current user profile
 router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const user = req.user as IUser;
+    const reqUser = req.user as IUser;
+    const user = await User.findById(reqUser._id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const results = await Result.find({ user: user._id })
       .populate('test', 'title type startTime status')
@@ -28,29 +65,43 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
     const bestRank = totalTests > 0
       ? Math.min(...results.map(r => r.rank))
       : 0;
+    const problemsSolved = await PracticeSolve.countDocuments({ user: user._id, correct: true });
+
+    // For admins: include tests they organized
+    let organizedTests: any[] = [];
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      organizedTests = await Test.find({ createdBy: user._id })
+        .select('title type startTime endTime status fee solutionPublishedAt leaderboardPublishedAt')
+        .sort({ startTime: -1 });
+    }
 
     res.json({
       user: {
         _id: user._id,
         name: user.name,
+        username: user.username || null,
         email: user.email,
         picture: user.picture,
         role: user.role,
-        createdAt: (user as any).createdAt,
+        createdAt: user.createdAt,
       },
-      stats: { totalTests, avgScore, bestRank },
+      stats: { totalTests, avgScore, bestRank, problemsSolved },
       results,
       registrations,
+      organizedTests,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get public user profile by ID
+// Get public user profile by ID or username
 router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.id).select('name picture createdAt');
+    const param = req.params.id;
+    const user = await User.findOne(
+      param.length === 24 ? { _id: param } : { username: param.toLowerCase() }
+    ).select('name username picture createdAt role');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const results = await Result.find({ user: user._id })
@@ -73,21 +124,23 @@ router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   }
 });
 
-// Admin: list all users
-router.get('/', isAdmin, async (req: Request, res: Response) => {
+// Super admin: list all users
+router.get('/', isSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Admin: update user role
-router.put('/:id/role', isAdmin, async (req: Request, res: Response) => {
+// Super admin: update user role
+router.put('/:id/role', isSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
-    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
+    const allowed = ['student', 'admin', 'super_admin'];
+    if (!allowed.includes(role)) return res.status(400).json({ message: 'Invalid role' });
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {

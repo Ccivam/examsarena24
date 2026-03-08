@@ -157,6 +157,7 @@ const Landing: React.FC = () => {
   const [signUpName, setSignUpName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpOtp, setSignUpOtp] = useState('');
 
   // Sign-in fields
@@ -196,6 +197,7 @@ const Landing: React.FC = () => {
     try {
       await axios.post('/api/auth/email/verify-otp', {
         name: signUpName, email: signUpEmail, password: signUpPassword, otp: signUpOtp,
+        username: signUpUsername || undefined,
       }, { withCredentials: true });
       await refetch();
     } catch (err: any) {
@@ -385,6 +387,16 @@ const Landing: React.FC = () => {
               <label className="form-label">Password</label>
               <input className="form-input" type="password" required minLength={6}
                 value={signUpPassword} onChange={e => setSignUpPassword(e.target.value)} placeholder="Min. 6 characters" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Username <span style={{ color: 'var(--c-ink-soft)', fontWeight: 400 }}>(optional, max 8 chars)</span></label>
+              <input className="form-input" type="text"
+                value={signUpUsername}
+                onChange={e => setSignUpUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 8))}
+                placeholder="arjun08" maxLength={8} />
+              <p style={{ fontSize: '0.72rem', color: 'var(--c-ink-soft)', marginTop: '0.25rem' }}>
+                Letters, numbers, underscore · You can set this later too
+              </p>
             </div>
             <button type="submit" disabled={busy} className="btn btn-primary" style={{ width: '100%', padding: '13px', marginBottom: '0.75rem' }}>
               {busy ? 'Sending OTP...' : 'Send Verification OTP'}
