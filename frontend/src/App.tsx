@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
@@ -25,12 +25,22 @@ import DiscussionDetail from './pages/DiscussionDetail';
 import UsernameSetup from './pages/UsernameSetup';
 import UserProfile from './pages/UserProfile';
 
+// Animated outlet — re-mounts on route change
+const AnimatedOutlet: React.FC = () => {
+  const location = useLocation();
+  return (
+    <div key={location.pathname} className="page-transition">
+      <Outlet />
+    </div>
+  );
+};
+
 // Layout with sidebar
 const AppLayout: React.FC = () => (
   <div className="app-container">
     <Sidebar />
     <main className="main-content">
-      <Outlet />
+      <AnimatedOutlet />
     </main>
   </div>
 );
