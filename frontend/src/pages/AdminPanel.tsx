@@ -67,7 +67,7 @@ const AdminPanel: React.FC = () => {
     } else if (tab === 'users') {
       axios.get('/api/users', { withCredentials: true }).then(r => setUsers(r.data));
     }
-  }, [tab, problemFilter]);
+  }, [tab]);
 
   // ── Create Test ──────────────────────────────────────────────────────────
   const handleCreateTest = async (e: React.FormEvent) => {
