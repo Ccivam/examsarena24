@@ -62,7 +62,7 @@ const Sidebar: React.FC = () => {
             <span>Profile</span>
           </NavLink>
         </div>
-        {(user?.role === 'admin' || user?.role === 'contributor') && (
+        {(user?.role === 'admin' || user?.role === 'contributor' || user?.role === 'super_admin') && (
           <div className="nav-item">
             <NavLink to="/admin" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
               <span className="nav-icon">⚙️</span>

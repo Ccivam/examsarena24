@@ -6,7 +6,7 @@ import RankingGraph from '../components/RankingGraph';
 import { Result, Registration, Test } from '../types';
 
 interface ProfileData {
-  user: { _id: string; name: string; email: string; picture: string; role: string; createdAt: string };
+  user: { _id: string; name: string; username?: string | null; email: string; picture: string; role: string; createdAt: string };
   stats: { totalTests: number; avgScore: number; bestRank: number; problemsSolved: number };
   results: Result[];
   registrations: Registration[];
@@ -62,6 +62,9 @@ const Profile: React.FC = () => {
           <h3 style={{ fontFamily: 'var(--f-serif)', fontSize: '1.5rem', marginBottom: '0.25rem' }}>
             {data.user.name}
           </h3>
+          {data.user.username && (
+            <p style={{ color: 'var(--c-ink-soft)', fontSize: '0.88rem', marginBottom: '0.15rem' }}>@{data.user.username}</p>
+          )}
           <p style={{ color: 'var(--c-ink-soft)', fontSize: '0.85rem' }}>{data.user.email}</p>
           <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
             <span
@@ -77,7 +80,7 @@ const Profile: React.FC = () => {
               {data.user.role}
             </span>
             <span style={{ marginLeft: '1rem', color: 'var(--c-ink-soft)' }}>
-              Member since {new Date(data.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+              Member since {data.user.createdAt ? new Date(data.user.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : '—'}
             </span>
           </p>
         </div>

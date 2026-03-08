@@ -92,6 +92,7 @@ router.get('/me', (req: Request, res: Response) => {
       email: user.email || null,
       picture: user.picture,
       role: user.role,
+      username: user.username || null,
     });
   } else {
     res.status(401).json({ message: 'Not authenticated' });

@@ -8,10 +8,45 @@ import { IUser } from '../models/User';
 
 const router = express.Router();
 
+// Check username availability
+router.get('/check-username', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const u = (req.query.u as string || '').toLowerCase().trim();
+    if (!u) return res.status(400).json({ message: 'Username required' });
+    if (!/^[a-z0-9_]{3,8}$/.test(u)) {
+      return res.json({ available: false, message: '3–8 chars, letters/numbers/underscore only' });
+    }
+    const exists = await User.findOne({ username: u });
+    res.json({ available: !exists });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Set / update username
+router.put('/set-username', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const currentUser = req.user as IUser;
+    const username = (req.body.username as string || '').toLowerCase().trim();
+    if (!username) return res.status(400).json({ message: 'Username required' });
+    if (!/^[a-z0-9_]{3,8}$/.test(username)) {
+      return res.status(400).json({ message: '3–8 chars, letters/numbers/underscore only' });
+    }
+    const exists = await User.findOne({ username, _id: { $ne: currentUser._id } });
+    if (exists) return res.status(400).json({ message: 'Username already taken' });
+    const updated = await User.findByIdAndUpdate(currentUser._id, { username }, { new: true }).select('-password');
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get current user profile
 router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const user = req.user as IUser;
+    const reqUser = req.user as IUser;
+    const user = await User.findById(reqUser._id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const results = await Result.find({ user: user._id })
       .populate('test', 'title type startTime status')
@@ -35,10 +70,11 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
       user: {
         _id: user._id,
         name: user.name,
+        username: user.username || null,
         email: user.email,
         picture: user.picture,
         role: user.role,
-        createdAt: (user as any).createdAt,
+        createdAt: user.createdAt,
       },
       stats: { totalTests, avgScore, bestRank, problemsSolved },
       results,
@@ -49,10 +85,13 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
   }
 });
 
-// Get public user profile by ID
+// Get public user profile by ID or username
 router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.id).select('name picture createdAt');
+    const param = req.params.id;
+    const user = await User.findOne(
+      param.length === 24 ? { _id: param } : { username: param.toLowerCase() }
+    ).select('name username picture createdAt role');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const results = await Result.find({ user: user._id })

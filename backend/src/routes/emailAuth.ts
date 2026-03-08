@@ -58,7 +58,7 @@ router.post('/send-otp', async (req: Request, res: Response) => {
 // POST /api/auth/email/verify-otp  { name, email, password, otp }
 router.post('/verify-otp', async (req: Request, res: Response) => {
   try {
-    const { name, email, password, otp } = req.body;
+    const { name, email, password, otp, username } = req.body;
     if (!email || !otp || !password || !name) {
       return res.status(400).json({ message: 'All fields are required' });
     }
@@ -78,7 +78,16 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
     const role = adminEmails.includes(email.toLowerCase().trim()) ? 'admin' : 'student';
 
-    const user = new User({ name: name.trim(), email: email.toLowerCase().trim(), password, role, emailVerified: true });
+    // Validate username if provided
+    let validUsername: string | undefined;
+    if (username) {
+      const u = username.toLowerCase().trim();
+      if (/^[a-z0-9_]{3,8}$/.test(u)) {
+        const exists = await User.findOne({ username: u });
+        if (!exists) validUsername = u;
+      }
+    }
+    const user = new User({ name: name.trim(), email: email.toLowerCase().trim(), password, role, emailVerified: true, ...(validUsername ? { username: validUsername } : {}) });
     await user.save();
 
     req.login(user, err => {
