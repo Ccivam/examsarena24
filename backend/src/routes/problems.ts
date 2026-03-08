@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import Problem from '../models/Problem';
 import PracticeSolve from '../models/PracticeSolve';
 import Test from '../models/Test';
-import { isAuthenticated, isAdmin, isAdminOrContributor } from '../middleware/auth';
+import { isAuthenticated, isAdmin } from '../middleware/auth';
 import { IUser } from '../models/User';
 
 const router = express.Router();
@@ -81,8 +81,8 @@ router.post('/:id/practice-submit', isAuthenticated, async (req: Request, res: R
   }
 });
 
-// Submit a problem (contributors and admins)
-router.post('/', isAdminOrContributor, async (req: Request, res: Response) => {
+// Submit a problem (admins only)
+router.post('/', isAdmin, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
     const problem = await Problem.create({ ...req.body, author: user._id });
@@ -92,7 +92,7 @@ router.post('/', isAdminOrContributor, async (req: Request, res: Response) => {
   }
 });
 
-// Get all problems (admin/contributor can see all, students see only approved)
+// Get all problems (admin/super_admin can see all, students see only approved)
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;

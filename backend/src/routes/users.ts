@@ -128,7 +128,7 @@ router.get('/', isSuperAdmin, async (req: Request, res: Response) => {
 router.put('/:id/role', isSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
-    const allowed = ['student', 'contributor', 'admin', 'super_admin'];
+    const allowed = ['student', 'admin', 'super_admin'];
     if (!allowed.includes(role)) return res.status(400).json({ message: 'Invalid role' });
     const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true }).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });

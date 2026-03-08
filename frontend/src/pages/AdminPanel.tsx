@@ -100,9 +100,9 @@ const AdminPanel: React.FC = () => {
       await axios.post('/api/problems', {
         ...problemForm,
         tags: problemForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-        status: user?.role === 'admin' ? 'approved' : 'pending',
+        status: 'approved',
       }, { withCredentials: true });
-      showMessage(user?.role === 'admin' ? 'Problem created and approved!' : 'Problem submitted for review!');
+      showMessage('Problem created!');
       setProblemForm(emptyProblemForm); // reset form
       // Reload problems list
       const url = problemFilter === 'all' ? '/api/admin/problems' : `/api/admin/problems?status=${problemFilter}`;
@@ -220,27 +220,23 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  const isContributor = user?.role === 'contributor';
-
   const isSuperAdmin = user?.role === 'super_admin';
 
-  const tabs: { id: Tab; label: string }[] = isContributor
-    ? [{ id: 'create-problem', label: '+ Submit Problem' }]
-    : [
-        { id: 'overview', label: 'Overview' },
-        { id: 'tests', label: 'Tests' },
-        { id: 'problems', label: `Problems${stats?.pendingProblems > 0 ? ` (${stats.pendingProblems})` : ''}` },
-        { id: 'create-test', label: '+ New Test' },
-        { id: 'create-problem', label: '+ New Problem' },
-        { id: 'post-discussion', label: '+ Post Discussion' },
-        ...(isSuperAdmin ? [{ id: 'users' as Tab, label: 'Users' }] : []),
-      ];
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'tests', label: 'Tests' },
+    { id: 'problems', label: `Problems${stats?.pendingProblems > 0 ? ` (${stats.pendingProblems})` : ''}` },
+    { id: 'create-test', label: '+ New Test' },
+    { id: 'create-problem', label: '+ New Problem' },
+    { id: 'post-discussion', label: '+ Post Discussion' },
+    ...(isSuperAdmin ? [{ id: 'users' as Tab, label: 'Users' }] : []),
+  ];
 
   return (
     <section className="view-section">
       <div className="view-header">
         <div>
-          <h2 className="view-title">{isContributor ? 'Submit Problem' : 'Admin Panel'}</h2>
+          <h2 className="view-title">Admin Panel</h2>
           <p className="view-subtitle">Manage tests, problems, and registrations.</p>
         </div>
       </div>
@@ -548,7 +544,7 @@ const AdminPanel: React.FC = () => {
       {/* ── Create Problem ── */}
       {tab === 'create-problem' && (
         <form onSubmit={handleCreateProblem} style={{ maxWidth: '700px' }}>
-          <span className="section-label">{user?.role === 'admin' ? 'Create Problem' : 'Submit Problem for Review'}</span>
+          <span className="section-label">Create Problem</span>
           <div className="form-group">
             <label className="form-label">Title *</label>
             <input className="form-input" required value={problemForm.title}
@@ -623,7 +619,7 @@ const AdminPanel: React.FC = () => {
               placeholder="kinematics, projectile, mechanics" />
           </div>
           <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px' }}>
-            {user?.role === 'admin' ? 'Create Problem' : 'Submit for Review'}
+            Create Problem
           </button>
         </form>
       )}
@@ -704,7 +700,7 @@ const AdminPanel: React.FC = () => {
                     </td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)' }}>{u.email}</td>
                     <td>
-                      <span className={`status-badge status-${u.role === 'super_admin' ? 'live' : u.role === 'admin' ? 'verified' : u.role === 'contributor' ? 'pending' : 'free'}`}
+                      <span className={`status-badge status-${u.role === 'super_admin' ? 'live' : u.role === 'admin' ? 'verified' : 'free'}`}
                         style={{ textTransform: 'capitalize' }}>
                         {u.role === 'super_admin' ? 'Owner' : u.role}
                       </span>
@@ -721,7 +717,6 @@ const AdminPanel: React.FC = () => {
                           style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto' }}
                         >
                           <option value="student">Student</option>
-                          <option value="contributor">Contributor</option>
                           <option value="admin">Admin</option>
                           <option value="super_admin">Owner</option>
                         </select>
