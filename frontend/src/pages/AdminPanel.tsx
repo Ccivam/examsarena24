@@ -23,7 +23,6 @@ const AdminPanel: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [tests, setTests] = useState<Test[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
-  const [problemFilter, setProblemFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
@@ -60,10 +59,7 @@ const AdminPanel: React.FC = () => {
     } else if (tab === 'tests') {
       axios.get('/api/tests', { withCredentials: true }).then(r => setTests(r.data));
     } else if (tab === 'problems') {
-      const url = problemFilter === 'all'
-        ? '/api/admin/problems'
-        : `/api/admin/problems?status=${problemFilter}`;
-      axios.get(url, { withCredentials: true }).then(r => setProblems(r.data));
+      axios.get('/api/admin/problems', { withCredentials: true }).then(r => setProblems(r.data));
     } else if (tab === 'post-discussion') {
       axios.get('/api/tests', { withCredentials: true }).then(r =>
         setCompletedTests(r.data.filter((t: Test) => new Date(t.endTime) < new Date()))
@@ -105,8 +101,7 @@ const AdminPanel: React.FC = () => {
       showMessage('Problem created!');
       setProblemForm(emptyProblemForm); // reset form
       // Reload problems list
-      const url = problemFilter === 'all' ? '/api/admin/problems' : `/api/admin/problems?status=${problemFilter}`;
-      axios.get(url, { withCredentials: true }).then(r => setProblems(r.data));
+      axios.get('/api/admin/problems', { withCredentials: true }).then(r => setProblems(r.data));
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Failed to create problem', 'error');
     }
@@ -225,7 +220,7 @@ const AdminPanel: React.FC = () => {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'tests', label: 'Tests' },
-    { id: 'problems', label: `Problems${stats?.pendingProblems > 0 ? ` (${stats.pendingProblems})` : ''}` },
+    { id: 'problems', label: 'Problems' },
     { id: 'create-test', label: '+ New Test' },
     { id: 'create-problem', label: '+ New Problem' },
     { id: 'post-discussion', label: '+ Post Discussion' },
@@ -434,19 +429,8 @@ const AdminPanel: React.FC = () => {
       {/* ── Problems ── */}
       {tab === 'problems' && (
         <div>
-          {/* Filter */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            {(['all', 'pending', 'approved'] as const).map(f => (
-              <button key={f} onClick={() => setProblemFilter(f)}
-                className={problemFilter === f ? 'btn btn-primary' : 'btn'}
-                style={{ fontSize: '0.75rem', padding: '6px 14px', textTransform: 'capitalize' }}>
-                {f}
-              </button>
-            ))}
-          </div>
-
           {problems.length === 0 ? (
-            <div className="empty-state">No problems found.</div>
+            <div className="empty-state">No problems yet. Create one from the + New Problem tab.</div>
           ) : (
             <table className="table-container">
               <thead>
@@ -455,8 +439,7 @@ const AdminPanel: React.FC = () => {
                   <th>Subject</th>
                   <th>Difficulty</th>
                   <th>By</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>Tags</th>
                 </tr>
               </thead>
               <tbody>
@@ -468,21 +451,8 @@ const AdminPanel: React.FC = () => {
                     <td style={{ fontSize: '0.85rem', color: 'var(--c-ink-soft)' }}>
                       {typeof p.author === 'object' ? p.author.name : 'Unknown'}
                     </td>
-                    <td><span className={`status-badge status-${p.status === 'approved' ? 'verified' : p.status === 'pending' ? 'pending' : 'rejected'}`}>{p.status}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {p.status === 'pending' && (
-                          <>
-                            <button className="btn btn-primary" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
-                              onClick={() => handleProblemStatus(p._id, 'approved')}>Approve</button>
-                            <button className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
-                              onClick={() => handleProblemStatus(p._id, 'rejected')}>Reject</button>
-                          </>
-                        )}
-                        {p.status === 'approved' && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>Ready to use</span>
-                        )}
-                      </div>
+                    <td style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
+                      {p.tags?.join(', ') || '—'}
                     </td>
                   </tr>
                 ))}
