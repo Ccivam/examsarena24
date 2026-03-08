@@ -36,5 +36,6 @@ const SubmissionSchema = new Schema<ISubmission>(
 );
 
 SubmissionSchema.index({ user: 1, test: 1 }, { unique: true });
+SubmissionSchema.index({ test: 1, isSubmitted: 1 });
 
 export default mongoose.model<ISubmission>('Submission', SubmissionSchema);

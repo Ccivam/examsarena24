@@ -19,5 +19,6 @@ const PracticeSolveSchema = new Schema<IPracticeSolve>({
 });
 
 PracticeSolveSchema.index({ user: 1, problem: 1 }, { unique: true });
+PracticeSolveSchema.index({ user: 1, correct: 1 });
 
 export default mongoose.model<IPracticeSolve>('PracticeSolve', PracticeSolveSchema);

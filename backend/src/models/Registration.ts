@@ -34,5 +34,7 @@ const RegistrationSchema = new Schema<IRegistration>(
 );
 
 RegistrationSchema.index({ user: 1, test: 1 }, { unique: true });
+RegistrationSchema.index({ test: 1 });
+RegistrationSchema.index({ paymentStatus: 1 });
 
 export default mongoose.model<IRegistration>('Registration', RegistrationSchema);

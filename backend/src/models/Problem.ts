@@ -57,4 +57,7 @@ const ProblemSchema = new Schema<IProblem>(
   { timestamps: true }
 );
 
+ProblemSchema.index({ status: 1 });
+ProblemSchema.index({ status: 1, subject: 1, createdAt: -1 });
+
 export default mongoose.model<IProblem>('Problem', ProblemSchema);

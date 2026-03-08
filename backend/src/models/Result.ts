@@ -47,5 +47,6 @@ const ResultSchema = new Schema<IResult>(
 
 ResultSchema.index({ user: 1, test: 1 }, { unique: true });
 ResultSchema.index({ test: 1, rank: 1 });
+ResultSchema.index({ user: 1 });
 
 export default mongoose.model<IResult>('Result', ResultSchema);

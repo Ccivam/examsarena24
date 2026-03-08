@@ -44,4 +44,6 @@ const DiscussionSchema = new Schema<IDiscussion>(
   { timestamps: true }
 );
 
+DiscussionSchema.index({ pinned: -1, createdAt: -1 });
+
 export default mongoose.model<IDiscussion>('Discussion', DiscussionSchema);
