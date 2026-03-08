@@ -684,3 +684,19 @@ h1, h2, h3, h4, .serif-text {
   max-height: 90vh;
   overflow-y: auto;
 }
+
+/* Page transition */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.25s ease forwards;
+}
