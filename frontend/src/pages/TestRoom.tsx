@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Test, Submission } from '../types';
@@ -14,6 +14,9 @@ const TestRoom: React.FC = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [visitedQuestions, setVisitedQuestions] = useState<Set<number>>(new Set([0]));
+  const submittingRef = useRef(false);
+  const fullscreenEnteredRef = useRef(false);
 
   useEffect(() => {
     const startTest = async () => {
@@ -21,7 +24,6 @@ const TestRoom: React.FC = () => {
         const res = await axios.post(`/api/tests/${id}/start`, {}, { withCredentials: true });
         setTest(res.data.test);
         setSubmission(res.data.submission);
-        // Calculate time left
         const endTime = new Date(res.data.test.endTime).getTime();
         const now = Date.now();
         setTimeLeft(Math.max(0, Math.floor((endTime - now) / 1000)));
@@ -33,6 +35,15 @@ const TestRoom: React.FC = () => {
     };
     startTest();
   }, [id]);
+
+  // Enter fullscreen after test loads
+  useEffect(() => {
+    if (!loading && test) {
+      document.documentElement.requestFullscreen?.()
+        .then(() => { fullscreenEnteredRef.current = true; })
+        .catch(() => {});
+    }
+  }, [loading, test]);
 
   // Timer
   useEffect(() => {
@@ -79,8 +90,12 @@ const TestRoom: React.FC = () => {
   };
 
   const handleFinalSubmit = useCallback(async () => {
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+    }
     try {
       await axios.post(`/api/tests/${id}/submit`, {}, { withCredentials: true });
       navigate(`/test/${id}/submitted`);
@@ -88,7 +103,34 @@ const TestRoom: React.FC = () => {
       console.error('Submit error', err);
       navigate('/dashboard');
     }
-  }, [id, navigate, submitting]);
+  }, [id, navigate]);
+
+  // Auto-submit on tab switch
+  useEffect(() => {
+    if (loading) return;
+    const handle = () => {
+      if (document.hidden) handleFinalSubmit();
+    };
+    document.addEventListener('visibilitychange', handle);
+    return () => document.removeEventListener('visibilitychange', handle);
+  }, [loading, handleFinalSubmit]);
+
+  // Auto-submit on fullscreen exit
+  useEffect(() => {
+    if (loading) return;
+    const handle = () => {
+      if (!document.fullscreenElement && fullscreenEnteredRef.current) {
+        handleFinalSubmit();
+      }
+    };
+    document.addEventListener('fullscreenchange', handle);
+    return () => document.removeEventListener('fullscreenchange', handle);
+  }, [loading, handleFinalSubmit]);
+
+  const goToQuestion = (i: number) => {
+    setCurrentQ(i);
+    setVisitedQuestions(prev => new Set([...prev, i]));
+  };
 
   if (loading) return <div className="loading-container">Loading test...</div>;
   if (error) return (
@@ -157,7 +199,7 @@ const TestRoom: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
           <button
             className="btn"
-            onClick={() => setCurrentQ((q) => Math.max(0, q - 1))}
+            onClick={() => goToQuestion(Math.max(0, currentQ - 1))}
             disabled={currentQ === 0}
           >
             ← Previous
@@ -168,7 +210,7 @@ const TestRoom: React.FC = () => {
           {currentQ < problems.length - 1 ? (
             <button
               className="btn btn-primary"
-              onClick={() => setCurrentQ((q) => Math.min(problems.length - 1, q + 1))}
+              onClick={() => goToQuestion(Math.min(problems.length - 1, currentQ + 1))}
             >
               Next →
             </button>
@@ -193,21 +235,42 @@ const TestRoom: React.FC = () => {
         <span className="section-label">Question Navigator</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', marginBottom: '2rem' }}>
           {problems.map((p, i) => {
-            const answered = getAnswer(p.problem._id);
+            const answered = !!getAnswer(p.problem._id);
+            const visited = visitedQuestions.has(i);
+            const isCurrent = i === currentQ;
+
+            let bg = 'transparent';
+            let border = 'var(--c-border)';
+            let color = 'var(--c-ink)';
+
+            if (isCurrent) {
+              bg = 'var(--c-ink)';
+              border = 'var(--c-ink)';
+              color = 'var(--c-paper)';
+            } else if (answered) {
+              bg = 'var(--c-accent)';
+              border = 'var(--c-accent)';
+              color = 'var(--c-ink)';
+            } else if (visited) {
+              bg = '#fff3cd';
+              border = '#f59e0b';
+              color = 'var(--c-ink)';
+            }
+
             return (
               <button
                 key={i}
-                onClick={() => setCurrentQ(i)}
+                onClick={() => goToQuestion(i)}
                 style={{
                   width: '40px',
                   height: '40px',
-                  border: `2px solid ${i === currentQ ? 'var(--c-ink)' : answered ? 'var(--c-accent)' : 'var(--c-border)'}`,
-                  background: answered ? 'var(--c-accent)' : i === currentQ ? 'var(--c-ink)' : 'transparent',
-                  color: i === currentQ ? 'var(--c-paper)' : 'var(--c-ink)',
+                  border: `2px solid ${border}`,
+                  background: bg,
+                  color,
                   cursor: 'pointer',
                   fontFamily: 'var(--f-sans)',
                   fontSize: '0.8rem',
-                  fontWeight: i === currentQ ? 600 : 400,
+                  fontWeight: isCurrent ? 600 : 400,
                 }}
               >
                 {i + 1}
@@ -216,22 +279,22 @@ const TestRoom: React.FC = () => {
           })}
         </div>
 
+        {/* Legend */}
         <div style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: 'var(--c-accent)', border: '1px solid var(--c-border)' }} />
-            Answered
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: 'var(--c-ink)', border: '1px solid var(--c-border)' }} />
-            Current
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: 16, height: 16, background: 'transparent', border: '1px solid var(--c-border)' }} />
-            Not visited
-          </div>
+          {[
+            { bg: 'var(--c-accent)', border: 'var(--c-accent)', label: 'Answered' },
+            { bg: '#fff3cd', border: '#f59e0b', label: 'Visited, not answered' },
+            { bg: 'transparent', border: 'var(--c-border)', label: 'Not visited' },
+            { bg: 'var(--c-ink)', border: 'var(--c-ink)', label: 'Current' },
+          ].map(({ bg, border, label }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <div style={{ width: 16, height: 16, background: bg, border: `2px solid ${border}`, flexShrink: 0 }} />
+              {label}
+            </div>
+          ))}
         </div>
 
-        <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid var(--c-border)', background: '#fff', fontSize: '0.85rem' }}>
+        <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--c-border)', background: '#fff', fontSize: '0.85rem' }}>
           <div style={{ marginBottom: '0.5rem', fontWeight: 600 }}>Summary</div>
           <div style={{ color: 'var(--c-ink-soft)' }}>Answered: {answeredCount}</div>
           <div style={{ color: 'var(--c-ink-soft)' }}>Unanswered: {problems.length - answeredCount}</div>
