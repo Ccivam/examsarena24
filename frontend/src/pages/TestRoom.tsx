@@ -138,12 +138,30 @@ const TestRoom: React.FC = () => {
   };
 
   if (loading) return <div className="loading-container">Loading test...</div>;
-  if (error) return (
-    <div style={{ padding: '3rem', maxWidth: '600px', margin: '0 auto' }}>
-      <div className="alert alert-error">{error}</div>
-      <button onClick={() => navigate(-1)} className="btn">Go Back</button>
-    </div>
-  );
+  if (error) {
+    const alreadySubmitted = error.includes('already submitted');
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center', border: '2px solid var(--c-ink)', padding: '3rem' }}>
+          {alreadySubmitted ? (
+            <>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚫</div>
+              <h2 style={{ fontFamily: 'var(--f-serif)', fontSize: '1.8rem', marginBottom: '1rem' }}>Test Already Submitted</h2>
+              <p style={{ color: 'var(--c-ink-soft)', marginBottom: '2rem', lineHeight: 1.6 }}>
+                Your test was submitted because you exited fullscreen or switched tabs.<br />
+                Re-entry is not allowed.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{error}</div>
+            </>
+          )}
+          <button onClick={() => navigate('/dashboard')} className="btn btn-primary">Go to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
   if (!test) return null;
 
   // ── Instructions Screen ───────────────────────────────────────────────────
