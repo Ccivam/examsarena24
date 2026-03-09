@@ -103,6 +103,12 @@ router.post('/:id/start', isAuthenticated, async (req: Request, res: Response) =
 
     // Get or create submission
     let submission = await Submission.findOne({ user: user._id, test: test._id });
+
+    // Block re-entry if already submitted (e.g. auto-submitted due to fullscreen exit)
+    if (submission?.isSubmitted) {
+      return res.status(403).json({ message: 'You have already submitted this test and cannot re-enter.' });
+    }
+
     if (!submission) {
       submission = await Submission.create({
         user: user._id,
