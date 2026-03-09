@@ -15,9 +15,12 @@ const TestRoom: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [visitedQuestions, setVisitedQuestions] = useState<Set<number>>(new Set([0]));
+  // showInstructions: true = show pre-test instructions, false = test is running
+  const [showInstructions, setShowInstructions] = useState(true);
   const submittingRef = useRef(false);
   const fullscreenEnteredRef = useRef(false);
 
+  // Load test data silently in background while instructions are shown
   useEffect(() => {
     const startTest = async () => {
       try {
@@ -36,18 +39,9 @@ const TestRoom: React.FC = () => {
     startTest();
   }, [id]);
 
-  // Enter fullscreen after test loads
+  // Timer — only runs when instructions dismissed
   useEffect(() => {
-    if (!loading && test) {
-      document.documentElement.requestFullscreen?.()
-        .then(() => { fullscreenEnteredRef.current = true; })
-        .catch(() => {});
-    }
-  }, [loading, test]);
-
-  // Timer
-  useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (showInstructions || timeLeft <= 0) return;
     const interval = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -59,7 +53,7 @@ const TestRoom: React.FC = () => {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [timeLeft > 0]);
+  }, [showInstructions, timeLeft > 0]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -105,19 +99,19 @@ const TestRoom: React.FC = () => {
     }
   }, [id, navigate]);
 
-  // Auto-submit on tab switch
+  // Auto-submit on tab switch — only active after instructions dismissed
   useEffect(() => {
-    if (loading) return;
+    if (showInstructions) return;
     const handle = () => {
       if (document.hidden) handleFinalSubmit();
     };
     document.addEventListener('visibilitychange', handle);
     return () => document.removeEventListener('visibilitychange', handle);
-  }, [loading, handleFinalSubmit]);
+  }, [showInstructions, handleFinalSubmit]);
 
-  // Auto-submit on fullscreen exit
+  // Auto-submit on fullscreen exit — only active after fullscreen was entered
   useEffect(() => {
-    if (loading) return;
+    if (showInstructions) return;
     const handle = () => {
       if (!document.fullscreenElement && fullscreenEnteredRef.current) {
         handleFinalSubmit();
@@ -125,7 +119,18 @@ const TestRoom: React.FC = () => {
     };
     document.addEventListener('fullscreenchange', handle);
     return () => document.removeEventListener('fullscreenchange', handle);
-  }, [loading, handleFinalSubmit]);
+  }, [showInstructions, handleFinalSubmit]);
+
+  // Called when user clicks "Enter Fullscreen & Start Test"
+  const handleEnterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      fullscreenEnteredRef.current = true;
+    } catch {
+      // Fullscreen denied — still allow test but warn
+    }
+    setShowInstructions(false);
+  };
 
   const goToQuestion = (i: number) => {
     setCurrentQ(i);
@@ -141,6 +146,65 @@ const TestRoom: React.FC = () => {
   );
   if (!test) return null;
 
+  // ── Instructions Screen ───────────────────────────────────────────────────
+  if (showInstructions) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: 'var(--c-paper)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem',
+      }}>
+        <div style={{ maxWidth: '600px', width: '100%', border: '2px solid var(--c-ink)', padding: '3rem' }}>
+          <h1 style={{ fontFamily: 'var(--f-serif)', fontSize: '2rem', marginBottom: '0.5rem' }}>
+            {test.title}
+          </h1>
+          <p style={{ color: 'var(--c-ink-soft)', marginBottom: '2rem', fontSize: '0.9rem' }}>
+            {test.problems.length} questions &bull; {test.duration} minutes &bull; {test.type.replace(/_/g, ' ')}
+          </p>
+
+          <div style={{ background: '#fff8e1', border: '1px solid #f59e0b', padding: '1.25rem', marginBottom: '2rem' }}>
+            <div style={{ fontWeight: 700, marginBottom: '0.75rem', fontSize: '0.9rem', color: '#92400e' }}>
+              ⚠ Proctoring Rules — Read carefully
+            </div>
+            <ul style={{ paddingLeft: '1.25rem', fontSize: '0.85rem', color: '#78350f', lineHeight: 1.8 }}>
+              <li>The test will run in <strong>fullscreen mode</strong>.</li>
+              <li><strong>Do not switch tabs</strong> or open any other window.</li>
+              <li><strong>Do not exit fullscreen</strong> (pressing Escape or clicking outside).</li>
+              <li>Any violation will <strong>immediately auto-submit</strong> your test.</li>
+              <li>Your answers are saved automatically as you select them.</li>
+              <li>You can change answers before submitting.</li>
+            </ul>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem', textAlign: 'center', fontSize: '0.85rem' }}>
+            {[
+              { label: 'Correct', value: `+${(test.problems[0]?.problem as any)?.marks ?? 4} marks` },
+              { label: 'Incorrect', value: `−${(test.problems[0]?.problem as any)?.negativeMarks ?? 1} mark` },
+              { label: 'Unattempted', value: '0 marks' },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ padding: '0.75rem', border: '1px solid var(--c-border)' }}>
+                <div style={{ color: 'var(--c-ink-soft)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '14px', fontSize: '1rem' }}
+            onClick={handleEnterFullscreen}
+          >
+            Enter Fullscreen & Start Test →
+          </button>
+          <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
+            By starting, you agree to the proctoring rules above.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Test UI ───────────────────────────────────────────────────────────────
   const problems = test.problems.sort((a, b) => a.order - b.order);
   const currentProblem = problems[currentQ]?.problem;
   const answeredCount = submission?.answers.filter((a) => a.selectedOption).length || 0;
@@ -197,31 +261,20 @@ const TestRoom: React.FC = () => {
 
         {/* Navigation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
-          <button
-            className="btn"
-            onClick={() => goToQuestion(Math.max(0, currentQ - 1))}
-            disabled={currentQ === 0}
-          >
+          <button className="btn" onClick={() => goToQuestion(Math.max(0, currentQ - 1))} disabled={currentQ === 0}>
             ← Previous
           </button>
           <span style={{ fontSize: '0.85rem', color: 'var(--c-ink-soft)' }}>
             {answeredCount}/{problems.length} answered
           </span>
           {currentQ < problems.length - 1 ? (
-            <button
-              className="btn btn-primary"
-              onClick={() => goToQuestion(Math.min(problems.length - 1, currentQ + 1))}
-            >
+            <button className="btn btn-primary" onClick={() => goToQuestion(Math.min(problems.length - 1, currentQ + 1))}>
               Next →
             </button>
           ) : (
             <button
               className="btn btn-primary"
-              onClick={() => {
-                if (confirm(`Submit test? You've answered ${answeredCount}/${problems.length} questions.`)) {
-                  handleFinalSubmit();
-                }
-              }}
+              onClick={() => { if (confirm(`Submit test? You've answered ${answeredCount}/${problems.length} questions.`)) handleFinalSubmit(); }}
               disabled={submitting}
             >
               {submitting ? 'Submitting...' : 'Submit Test'}
@@ -233,53 +286,24 @@ const TestRoom: React.FC = () => {
       {/* Question panel */}
       <div style={{ padding: '2rem', background: 'var(--c-paper-dark)' }}>
         <span className="section-label">Question Navigator</span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {problems.map((p, i) => {
             const answered = !!getAnswer(p.problem._id);
             const visited = visitedQuestions.has(i);
             const isCurrent = i === currentQ;
-
-            let bg = 'transparent';
-            let border = 'var(--c-border)';
-            let color = 'var(--c-ink)';
-
-            if (isCurrent) {
-              bg = 'var(--c-ink)';
-              border = 'var(--c-ink)';
-              color = 'var(--c-paper)';
-            } else if (answered) {
-              bg = 'var(--c-accent)';
-              border = 'var(--c-accent)';
-              color = 'var(--c-ink)';
-            } else if (visited) {
-              bg = '#fff3cd';
-              border = '#f59e0b';
-              color = 'var(--c-ink)';
-            }
-
+            let bg = 'transparent', border = 'var(--c-border)', color = 'var(--c-ink)';
+            if (isCurrent) { bg = 'var(--c-ink)'; border = 'var(--c-ink)'; color = 'var(--c-paper)'; }
+            else if (answered) { bg = 'var(--c-accent)'; border = 'var(--c-accent)'; }
+            else if (visited) { bg = '#fff3cd'; border = '#f59e0b'; }
             return (
-              <button
-                key={i}
-                onClick={() => goToQuestion(i)}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  border: `2px solid ${border}`,
-                  background: bg,
-                  color,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--f-sans)',
-                  fontSize: '0.8rem',
-                  fontWeight: isCurrent ? 600 : 400,
-                }}
-              >
+              <button key={i} onClick={() => goToQuestion(i)}
+                style={{ width: '40px', height: '40px', border: `2px solid ${border}`, background: bg, color, cursor: 'pointer', fontFamily: 'var(--f-sans)', fontSize: '0.8rem', fontWeight: isCurrent ? 600 : 400 }}>
                 {i + 1}
               </button>
             );
           })}
         </div>
 
-        {/* Legend */}
         <div style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
           {[
             { bg: 'var(--c-accent)', border: 'var(--c-accent)', label: 'Answered' },
@@ -303,11 +327,7 @@ const TestRoom: React.FC = () => {
         <button
           className="btn btn-primary"
           style={{ width: '100%', marginTop: '1.5rem' }}
-          onClick={() => {
-            if (confirm(`Submit test? You've answered ${answeredCount}/${problems.length} questions.`)) {
-              handleFinalSubmit();
-            }
-          }}
+          onClick={() => { if (confirm(`Submit test? You've answered ${answeredCount}/${problems.length} questions.`)) handleFinalSubmit(); }}
           disabled={submitting}
         >
           {submitting ? 'Submitting...' : 'Final Submit'}
