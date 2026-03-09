@@ -70,10 +70,25 @@ const AdminPanel: React.FC = () => {
   }, [tab]);
 
   // ── Create Test ──────────────────────────────────────────────────────────
+  const handleTestTimeChange = (key: 'startTime' | 'endTime', value: string) => {
+    const updated = { ...testForm, [key]: value };
+    if (updated.startTime && updated.endTime) {
+      const diff = new Date(updated.endTime).getTime() - new Date(updated.startTime).getTime();
+      if (diff > 0) updated.duration = Math.round(diff / 60000);
+    }
+    setTestForm(updated);
+  };
+
   const handleCreateTest = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post('/api/tests', testForm, { withCredentials: true });
+      const payload = {
+        ...testForm,
+        startTime: new Date(testForm.startTime).toISOString(),
+        endTime: new Date(testForm.endTime).toISOString(),
+        registrationDeadline: new Date(testForm.registrationDeadline).toISOString(),
+      };
+      const res = await axios.post('/api/tests', payload, { withCredentials: true });
       showMessage('Test created! Now add questions to it from the Tests tab.');
       setTestForm({
         title: '', description: '', type: 'JEE_MAINS',
@@ -486,19 +501,40 @@ const AdminPanel: React.FC = () => {
             </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Start Time *</label>
+              <input className="form-input" type="datetime-local" required
+                value={testForm.startTime}
+                onChange={e => handleTestTimeChange('startTime', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">End Time *</label>
+              <input className="form-input" type="datetime-local" required
+                value={testForm.endTime}
+                onChange={e => handleTestTimeChange('endTime', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Registration Deadline *</label>
+              <input className="form-input" type="datetime-local" required
+                value={testForm.registrationDeadline}
+                onChange={e => setTestForm({ ...testForm, registrationDeadline: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Duration (minutes) — auto-calculated</label>
+              <input className="form-input" type="number" required
+                value={testForm.duration}
+                onChange={e => setTestForm({ ...testForm, duration: Number(e.target.value) })}
+                style={{ background: testForm.startTime && testForm.endTime ? 'var(--c-paper-dark)' : undefined }} />
+            </div>
             {[
-              { label: 'Start Time *', key: 'startTime', type: 'datetime-local' },
-              { label: 'End Time *', key: 'endTime', type: 'datetime-local' },
-              { label: 'Registration Deadline *', key: 'registrationDeadline', type: 'datetime-local' },
-              { label: 'Duration (minutes) *', key: 'duration', type: 'number' },
-              { label: 'Entry Fee ₹ (0 = free)', key: 'fee', type: 'number' },
-              { label: 'Max Participants', key: 'maxParticipants', type: 'number' },
+              { label: 'Entry Fee ₹ (0 = free)', key: 'fee' },
+              { label: 'Max Participants', key: 'maxParticipants' },
             ].map(f => (
               <div key={f.key} className="form-group">
                 <label className="form-label">{f.label}</label>
-                <input className="form-input" type={f.type} required={f.label.includes('*')}
+                <input className="form-input" type="number"
                   value={(testForm as any)[f.key]}
-                  onChange={e => setTestForm({ ...testForm, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value })} />
+                  onChange={e => setTestForm({ ...testForm, [f.key]: Number(e.target.value) })} />
               </div>
             ))}
           </div>
