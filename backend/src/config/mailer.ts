@@ -74,3 +74,67 @@ export const sendExamEndEmail = async (to: string, name: string, testTitle: stri
   if (isDev) console.log(`\n📧 [EXAM END] To: ${to} | Test: ${testTitle}\n`);
   else await send(to, `Exam "${testTitle}" has ended — results coming soon`, html);
 };
+
+export const sendNewTestNotification = async (
+  to: string, name: string,
+  test: { title: string; _id: string; startTime: Date; fee: number; type: string }
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const start = test.startTime.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long',
+    year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const fee = test.fee > 0 ? `₹${test.fee}` : 'Free';
+  const type = test.type.replace(/_/g, ' ');
+
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#39ff14;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;font-family:Georgia,serif;margin-bottom:1.5rem;font-size:0.85rem;">New Test Announced</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${name},</p>
+      <p style="color:#4a4840;margin-bottom:1.5rem;">A new exam has been scheduled on JEE Arena. Register early to secure your spot!</p>
+      <div style="border:1px solid #e0dcd0;padding:1.25rem;margin-bottom:1.5rem;background:#f2f0e6;">
+        <h3 style="font-family:Georgia,serif;font-weight:400;margin:0 0 0.75rem;">${test.title}</h3>
+        <table style="font-size:0.85rem;color:#4a4840;border-collapse:collapse;width:100%;">
+          <tr><td style="padding:3px 0;width:100px;">Type</td><td style="color:#0a0a0a;font-weight:500;">${type}</td></tr>
+          <tr><td style="padding:3px 0;">Starts</td><td style="color:#0a0a0a;font-weight:500;">${start} IST</td></tr>
+          <tr><td style="padding:3px 0;">Entry Fee</td><td style="color:#0a0a0a;font-weight:500;">${fee}</td></tr>
+        </table>
+      </div>
+      <a href="${frontendUrl}/test/${test._id}"
+        style="display:inline-block;padding:12px 28px;background:#39ff14;border:1px solid #0a0a0a;color:#0a0a0a;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        View & Register →
+      </a>
+      <p style="margin-top:1.5rem;font-size:0.75rem;color:#9a9690;">You received this because you are registered on JEE Arena.</p>
+    </div>`;
+
+  if (isDev) console.log(`\n📧 [NEW TEST] To: ${to} | Test: ${test.title}\n`);
+  else await send(to, `New Exam: ${test.title} — Register Now`, html);
+};
+
+export const sendAnnouncementNotification = async (
+  to: string, name: string,
+  discussion: { title: string; _id: string; type: string }
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const typeLabel = discussion.type === 'editorial' ? 'Editorial' : discussion.type === 'announcement' ? 'Announcement' : 'Discussion';
+
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#f2f0e6;border:1px solid #e0dcd0;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;font-family:Georgia,serif;margin-bottom:1.5rem;font-size:0.85rem;">${typeLabel}</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${name},</p>
+      <p style="color:#4a4840;margin-bottom:1.5rem;">A new ${typeLabel.toLowerCase()} has been posted on JEE Arena:</p>
+      <div style="border-left:3px solid #0a0a0a;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#f2f0e6;">
+        <strong style="font-size:1rem;">${discussion.title}</strong>
+      </div>
+      <a href="${frontendUrl}/discussions/${discussion._id}"
+        style="display:inline-block;padding:12px 28px;background:#0a0a0a;border:1px solid #0a0a0a;color:#fcfbf6;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        Read Now →
+      </a>
+      <p style="margin-top:1.5rem;font-size:0.75rem;color:#9a9690;">You received this because you are registered on JEE Arena.</p>
+    </div>`;
+
+  if (isDev) console.log(`\n📧 [ANNOUNCEMENT] To: ${to} | Title: ${discussion.title}\n`);
+  else await send(to, `[JEE Arena] ${discussion.title}`, html);
+};
