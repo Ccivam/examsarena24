@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
 import Discussion from '../models/Discussion';
 import { isAuthenticated, isAdmin } from '../middleware/auth';
-import { IUser } from '../models/User';
+import User, { IUser } from '../models/User';
+import { sendAnnouncementNotification } from '../config/mailer';
 
 const router = express.Router();
 
@@ -64,6 +65,21 @@ router.post('/', isAdmin, async (req: Request, res: Response) => {
     await discussion.populate('test', 'title');
 
     res.status(201).json(discussion);
+
+    // Fire-and-forget: notify all users for announcements and editorials
+    if (discussion.type === 'announcement' || discussion.type === 'editorial') {
+      User.find({}, 'name email').then(users => {
+        for (const u of users) {
+          if (u.email) {
+            sendAnnouncementNotification(u.email, u.name, {
+              title: discussion.title,
+              _id: discussion._id.toString(),
+              type: discussion.type,
+            }).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

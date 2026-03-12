@@ -4,9 +4,10 @@ import Registration from '../models/Registration';
 import Submission from '../models/Submission';
 import Result from '../models/Result'; // still used in /review route
 import { isAuthenticated, isAdmin } from '../middleware/auth';
-import { IUser } from '../models/User';
+import User, { IUser } from '../models/User';
 import mongoose from 'mongoose';
 import { calculateResultsForTest } from '../utils/calculateResults';
+import { sendNewTestNotification } from '../config/mailer';
 
 const router = express.Router();
 
@@ -238,6 +239,21 @@ router.post('/', isAdmin, async (req: Request, res: Response) => {
     const user = req.user as IUser;
     const test = await Test.create({ ...req.body, createdBy: user._id });
     res.status(201).json(test);
+
+    // Fire-and-forget: notify all users about new test
+    User.find({}, 'name email').then(users => {
+      for (const u of users) {
+        if (u.email) {
+          sendNewTestNotification(u.email, u.name, {
+            title: test.title,
+            _id: test._id.toString(),
+            startTime: test.startTime,
+            fee: test.fee,
+            type: test.type,
+          }).catch(() => {});
+        }
+      }
+    }).catch(() => {});
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
