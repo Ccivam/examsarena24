@@ -248,11 +248,6 @@ const TestRoom: React.FC = () => {
               Question {currentQ + 1} of {problems.length} &bull; {currentProblem.subject} &bull; +{currentProblem.marks} / -{currentProblem.negativeMarks}
             </div>
             <div className="q-text" dangerouslySetInnerHTML={{ __html: currentProblem.content }} />
-            {currentProblem.imageUrl && (
-              <div style={{ margin: '1rem 0' }}>
-                <img src={currentProblem.imageUrl} alt="Question diagram" style={{ maxWidth: '100%', maxHeight: '320px', objectFit: 'contain', border: '1px solid var(--c-border)' }} />
-              </div>
-            )}
             <div className="q-options">
               {currentProblem.options.map((opt) => {
                 const selected = getAnswer(currentProblem._id) === opt.label;
