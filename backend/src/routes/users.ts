@@ -95,6 +95,22 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
   }
 });
 
+// Search users by name/username (for @mention autocomplete)
+router.get('/search', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const q = (req.query.q as string || '').trim();
+    if (!q) return res.json([]);
+    const regex = new RegExp(q, 'i');
+    const users = await User.find({
+      $or: [{ name: regex }, { username: regex }],
+      username: { $exists: true, $ne: null },
+    }).select('_id name username picture').limit(8);
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get public user profile by ID or username
 router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   try {
