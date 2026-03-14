@@ -6,7 +6,6 @@ interface Problem {
   _id: string;
   title: string;
   content: string;
-  imageUrl?: string;
   options: { label: string; text: string }[];
   subject: string;
   difficulty: string;
@@ -78,14 +77,9 @@ const ProblemSolve: React.FC = () => {
       </h2>
 
       <div
-        style={{ marginBottom: problem.imageUrl ? '1rem' : '2rem', lineHeight: 1.8, fontSize: '0.95rem' }}
+        style={{ marginBottom: '2rem', lineHeight: 1.8, fontSize: '0.95rem' }}
         dangerouslySetInnerHTML={{ __html: problem.content }}
       />
-      {problem.imageUrl && (
-        <div style={{ marginBottom: '2rem' }}>
-          <img src={problem.imageUrl} alt="Question diagram" style={{ maxWidth: '100%', maxHeight: '320px', objectFit: 'contain', border: '1px solid var(--c-border)' }} />
-        </div>
-      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
         {problem.options.map(opt => {
