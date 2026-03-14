@@ -17,6 +17,7 @@ const TestRoom: React.FC = () => {
   const [visitedQuestions, setVisitedQuestions] = useState<Set<number>>(new Set([0]));
   // showInstructions: true = show pre-test instructions, false = test is running
   const [showInstructions, setShowInstructions] = useState(true);
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
   const submittingRef = useRef(false);
   const fullscreenEnteredRef = useRef(false);
 
@@ -109,17 +110,31 @@ const TestRoom: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handle);
   }, [showInstructions, handleFinalSubmit]);
 
-  // Auto-submit on fullscreen exit — only active after fullscreen was entered
+  // Show warning on fullscreen exit — only active after fullscreen was entered
   useEffect(() => {
     if (showInstructions) return;
     const handle = () => {
-      if (!document.fullscreenElement && fullscreenEnteredRef.current) {
-        handleFinalSubmit();
+      if (!document.fullscreenElement && fullscreenEnteredRef.current && !submittingRef.current) {
+        setShowFullscreenWarning(true);
       }
     };
     document.addEventListener('fullscreenchange', handle);
     return () => document.removeEventListener('fullscreenchange', handle);
-  }, [showInstructions, handleFinalSubmit]);
+  }, [showInstructions]);
+
+  const handleFullscreenWarningConfirm = () => {
+    setShowFullscreenWarning(false);
+    handleFinalSubmit();
+  };
+
+  const handleFullscreenWarningCancel = async () => {
+    setShowFullscreenWarning(false);
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      // If re-entry fails, show warning again next time
+    }
+  };
 
   // Called when user clicks "Enter Fullscreen & Start Test"
   const handleEnterFullscreen = async () => {
@@ -224,10 +239,46 @@ const TestRoom: React.FC = () => {
 
   // ── Test UI ───────────────────────────────────────────────────────────────
   const problems = test.problems.sort((a, b) => a.order - b.order);
+
   const currentProblem = problems[currentQ]?.problem;
   const answeredCount = submission?.answers.filter((a) => a.selectedOption).length || 0;
 
   return (
+    <>
+    {/* Fullscreen exit warning modal */}
+    {showFullscreenWarning && (
+      <div style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999, padding: '2rem',
+      }}>
+        <div style={{ background: 'var(--c-paper)', border: '2px solid var(--c-ink)', padding: '2.5rem', maxWidth: '440px', width: '100%', textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚠️</div>
+          <h3 style={{ fontFamily: 'var(--f-serif)', fontSize: '1.4rem', marginBottom: '0.75rem' }}>
+            You exited fullscreen
+          </h3>
+          <p style={{ color: 'var(--c-ink-soft)', lineHeight: 1.6, marginBottom: '2rem', fontSize: '0.9rem' }}>
+            Exiting fullscreen will <strong>automatically submit your exam</strong> with your current answers. This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button
+              className="btn btn-primary"
+              style={{ padding: '10px 24px' }}
+              onClick={handleFullscreenWarningCancel}
+            >
+              ↩ Go Back to Exam
+            </button>
+            <button
+              className="btn"
+              style={{ padding: '10px 24px', borderColor: '#dc2626', color: '#dc2626' }}
+              onClick={handleFullscreenWarningConfirm}
+            >
+              Yes, Submit & Exit
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', minHeight: '100vh', maxWidth: '1600px', margin: '0 auto', border: '1px solid var(--c-border)' }}>
       {/* Main area */}
       <div style={{ padding: '2rem 3rem', borderRight: '1px solid var(--c-border)' }}>
@@ -352,6 +403,7 @@ const TestRoom: React.FC = () => {
         </button>
       </div>
     </div>
+    </>
   );
 };
 
