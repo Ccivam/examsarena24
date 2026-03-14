@@ -19,6 +19,7 @@ import leaderboardRoutes from './routes/leaderboard';
 import paymentRoutes from './routes/payments';
 import adminRoutes from './routes/admin';
 import discussionRoutes from './routes/discussions';
+import uploadRoutes from './routes/upload';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000');
@@ -94,6 +95,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/discussions', discussionRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 

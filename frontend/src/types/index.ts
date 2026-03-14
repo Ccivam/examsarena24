@@ -34,6 +34,7 @@ export interface Problem {
   _id: string;
   title: string;
   content: string;
+  imageUrl?: string;
   options: { label: string; text: string }[];
   correctOption?: string;
   explanation?: string;
