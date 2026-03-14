@@ -1,9 +1,17 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface IReply {
+  _id: mongoose.Types.ObjectId;
+  author: mongoose.Types.ObjectId;
+  content: string;
+  createdAt: Date;
+}
+
 export interface IComment {
   _id: mongoose.Types.ObjectId;
   author: mongoose.Types.ObjectId;
   content: string;
+  replies: IReply[];
   createdAt: Date;
 }
 
@@ -19,10 +27,19 @@ export interface IDiscussion extends Document {
   updatedAt: Date;
 }
 
+const ReplySchema = new Schema<IReply>(
+  {
+    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true, maxlength: 2000 },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
 const CommentSchema = new Schema<IComment>(
   {
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true, maxlength: 2000 },
+    replies: [ReplySchema],
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
