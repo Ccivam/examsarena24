@@ -8,8 +8,11 @@ export interface IOption {
 export interface IProblem extends Document {
   title: string;
   content: string;
+  problemType: 'mcq' | 'numerical';
   options: IOption[];
-  correctOption: string; // 'A', 'B', 'C', or 'D'
+  correctOption: string; // 'A', 'B', 'C', or 'D' — MCQ only
+  correctAnswer?: number; // numerical type only
+  answerTolerance: number; // ±tolerance for numerical (0 = exact match)
   explanation: string;
   subject: 'Physics' | 'Chemistry' | 'Mathematics';
   marks: number;
@@ -31,8 +34,11 @@ const ProblemSchema = new Schema<IProblem>(
   {
     title: { type: String, required: true },
     content: { type: String, required: true },
-    options: { type: [OptionSchema], required: true },
-    correctOption: { type: String, required: true, enum: ['A', 'B', 'C', 'D'] },
+    problemType: { type: String, enum: ['mcq', 'numerical'], default: 'mcq' },
+    options: { type: [OptionSchema], default: [] },
+    correctOption: { type: String, enum: ['A', 'B', 'C', 'D', ''] , default: '' },
+    correctAnswer: { type: Number },
+    answerTolerance: { type: Number, default: 0 },
     explanation: { type: String, default: '' },
     subject: {
       type: String,
@@ -40,7 +46,7 @@ const ProblemSchema = new Schema<IProblem>(
       enum: ['Physics', 'Chemistry', 'Mathematics'],
     },
     marks: { type: Number, default: 4 },
-    negativeMarks: { type: Number, default: 1 },
+    negativeMarks: { type: Number, default: 0 },
     difficulty: {
       type: String,
       enum: ['Easy', 'Medium', 'Hard'],

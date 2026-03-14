@@ -296,34 +296,66 @@ const TestRoom: React.FC = () => {
         {currentProblem && (
           <div className="question-block" style={{ marginBottom: '2rem' }}>
             <div className="q-meta">
-              Question {currentQ + 1} of {problems.length} &bull; {currentProblem.subject} &bull; +{currentProblem.marks} / -{currentProblem.negativeMarks}
+              Question {currentQ + 1} of {problems.length} &bull; {currentProblem.subject} &bull; +{currentProblem.marks} / -{(currentProblem as any).problemType === 'numerical' ? 0 : currentProblem.negativeMarks}
+              {(currentProblem as any).problemType === 'numerical' && (
+                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: 2 }}>
+                  Integer Type
+                </span>
+              )}
             </div>
             <div className="q-text" dangerouslySetInnerHTML={{ __html: currentProblem.content }} />
-            <div className="q-options">
-              {currentProblem.options.map((opt) => {
-                const selected = getAnswer(currentProblem._id) === opt.label;
-                return (
-                  <div
-                    key={opt.label}
-                    className={`option-row${selected ? ' selected' : ''}`}
-                    onClick={() => handleAnswer(currentProblem._id, opt.label)}
-                    style={{ cursor: 'pointer' }}
+
+            {(currentProblem as any).problemType === 'numerical' ? (
+              <div style={{ marginTop: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--c-ink-soft)', marginBottom: '0.5rem' }}>
+                  Enter your answer (integer / decimal):
+                </label>
+                <input
+                  type="number"
+                  className="form-input"
+                  style={{ maxWidth: 220, fontSize: '1.2rem', fontWeight: 600, letterSpacing: '0.05em' }}
+                  value={getAnswer(currentProblem._id) ?? ''}
+                  onChange={e => handleAnswer(currentProblem._id, e.target.value)}
+                  placeholder="Type answer..."
+                />
+                {getAnswer(currentProblem._id) && (
+                  <button
+                    onClick={() => handleAnswer(currentProblem._id, '')}
+                    style={{ display: 'block', marginTop: '0.75rem', background: 'none', border: 'none', color: 'var(--c-ink-soft)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
                   >
-                    <div className="option-marker" style={selected ? { background: 'var(--c-ink)', color: 'var(--c-paper)' } : {}}>
-                      {opt.label}
-                    </div>
-                    <div>{opt.text}</div>
-                  </div>
-                );
-              })}
-            </div>
-            {getAnswer(currentProblem._id) && (
-              <button
-                onClick={() => handleAnswer(currentProblem._id, '')}
-                style={{ marginTop: '1rem', background: 'none', border: 'none', color: 'var(--c-ink-soft)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
-              >
-                Clear Answer
-              </button>
+                    Clear Answer
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="q-options">
+                  {currentProblem.options.map((opt) => {
+                    const selected = getAnswer(currentProblem._id) === opt.label;
+                    return (
+                      <div
+                        key={opt.label}
+                        className={`option-row${selected ? ' selected' : ''}`}
+                        onClick={() => handleAnswer(currentProblem._id, opt.label)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="option-marker" style={selected ? { background: 'var(--c-ink)', color: 'var(--c-paper)' } : {}}>
+                          {opt.label}
+                        </div>
+                        <div>{opt.text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {getAnswer(currentProblem._id) && (
+                  <button
+                    onClick={() => handleAnswer(currentProblem._id, '')}
+                    style={{ marginTop: '1rem', background: 'none', border: 'none', color: 'var(--c-ink-soft)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
+                  >
+                    Clear Answer
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

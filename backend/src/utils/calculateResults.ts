@@ -34,17 +34,31 @@ export const calculateResultsForTest = async (testId: string): Promise<number> =
         continue;
       }
 
-      if (answer.selectedOption === problem.correctOption) {
+      const isNumerical = problem.problemType === 'numerical';
+      let isCorrect = false;
+
+      if (isNumerical) {
+        const studentNum = parseFloat(answer.selectedOption);
+        const tolerance = problem.answerTolerance ?? 0;
+        isCorrect = !isNaN(studentNum) && Math.abs(studentNum - (problem.correctAnswer ?? 0)) <= tolerance;
+      } else {
+        isCorrect = answer.selectedOption === problem.correctOption;
+      }
+
+      if (isCorrect) {
         const pts = problem.marks || 4;
         if (problem.subject === 'Physics') physicsScore += pts;
         else if (problem.subject === 'Chemistry') chemistryScore += pts;
         else if (problem.subject === 'Mathematics') mathScore += pts;
         correct++;
       } else {
-        const neg = problem.negativeMarks || 1;
-        if (problem.subject === 'Physics') physicsScore -= neg;
-        else if (problem.subject === 'Chemistry') chemistryScore -= neg;
-        else if (problem.subject === 'Mathematics') mathScore -= neg;
+        // Numerical type: no negative marking (JEE style). MCQ: apply negativeMarks.
+        const neg = isNumerical ? 0 : (problem.negativeMarks ?? 0);
+        if (neg > 0) {
+          if (problem.subject === 'Physics') physicsScore -= neg;
+          else if (problem.subject === 'Chemistry') chemistryScore -= neg;
+          else if (problem.subject === 'Mathematics') mathScore -= neg;
+        }
         wrong++;
       }
     }

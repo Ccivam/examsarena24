@@ -19,7 +19,7 @@ export interface ISubmission extends Document {
 
 const AnswerSchema = new Schema<IAnswer>({
   problem: { type: Schema.Types.ObjectId, ref: 'Problem', required: true },
-  selectedOption: { type: String, enum: ['A', 'B', 'C', 'D', null], default: null },
+  selectedOption: { type: String, default: null }, // 'A'/'B'/'C'/'D' for MCQ, numeric string for numerical
   submittedAt: { type: Date, default: Date.now },
 });
 

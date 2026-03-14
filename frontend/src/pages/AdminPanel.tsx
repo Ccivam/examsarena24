@@ -7,13 +7,15 @@ type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem' 
 
 const emptyProblemForm = {
   title: '', content: '', subject: 'Physics',
+  problemType: 'mcq' as 'mcq' | 'numerical',
   options: [
     { label: 'A', text: '' },
     { label: 'B', text: '' },
     { label: 'C', text: '' },
     { label: 'D', text: '' },
   ],
-  correctOption: 'A', explanation: '',
+  correctOption: 'A', correctAnswer: 0, answerTolerance: 0,
+  explanation: '',
   marks: 4, negativeMarks: 1, difficulty: 'Medium', tags: '',
 };
 
@@ -42,6 +44,11 @@ const AdminPanel: React.FC = () => {
 
   // Users management (super_admin)
   const [users, setUsers] = useState<any[]>([]);
+
+  // Problem edit modal
+  const [editingProblem, setEditingProblem] = useState<any>(null);
+  const [editForm, setEditForm] = useState<any>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Problem picker for a test
   const [managingTest, setManagingTest] = useState<Test | null>(null);
@@ -108,11 +115,28 @@ const AdminPanel: React.FC = () => {
   const handleCreateProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('/api/problems', {
-        ...problemForm,
+      const payload: any = {
+        title: problemForm.title,
+        content: problemForm.content,
+        subject: problemForm.subject,
+        problemType: problemForm.problemType,
+        difficulty: problemForm.difficulty,
+        marks: problemForm.marks,
+        negativeMarks: problemForm.problemType === 'numerical' ? 0 : problemForm.negativeMarks,
+        explanation: problemForm.explanation,
         tags: problemForm.tags.split(',').map(t => t.trim()).filter(Boolean),
         status: 'approved',
-      }, { withCredentials: true });
+      };
+      if (problemForm.problemType === 'mcq') {
+        payload.options = problemForm.options;
+        payload.correctOption = problemForm.correctOption;
+      } else {
+        payload.correctAnswer = problemForm.correctAnswer;
+        payload.answerTolerance = problemForm.answerTolerance;
+        payload.options = [];
+        payload.correctOption = '';
+      }
+      await axios.post('/api/problems', payload, { withCredentials: true });
       showMessage('Problem created!');
       setProblemForm(emptyProblemForm); // reset form
       // Reload problems list
@@ -154,6 +178,31 @@ const AdminPanel: React.FC = () => {
       setTests(res.data);
     } catch (err: any) {
       showMessage('Failed to save questions', 'error');
+    }
+  };
+
+  // ── Problem edit modal ───────────────────────────────────────────────────
+  const openEditProblem = async (problemId: string) => {
+    const res = await axios.get(`/api/problems/${problemId}`, { withCredentials: true });
+    setEditingProblem(res.data);
+    setEditForm({ ...res.data, tags: (res.data.tags || []).join(', ') });
+  };
+
+  const handleSaveProblem = async () => {
+    setEditSaving(true);
+    try {
+      await axios.put(`/api/problems/${editingProblem._id}`, {
+        ...editForm,
+        tags: editForm.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+      }, { withCredentials: true });
+      showMessage('Problem updated!');
+      setEditingProblem(null);
+      const res = await axios.get('/api/admin/problems', { withCredentials: true });
+      setProblems(res.data);
+    } catch (err: any) {
+      showMessage(err.response?.data?.message || 'Failed to update', 'error');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -447,21 +496,33 @@ const AdminPanel: React.FC = () => {
           {problems.length === 0 ? (
             <div className="empty-state">No problems yet. Create one from the + New Problem tab.</div>
           ) : (
+            <>
             <table className="table-container">
               <thead>
                 <tr>
                   <th>Title</th>
                   <th>Subject</th>
+                  <th>Type</th>
                   <th>Difficulty</th>
                   <th>By</th>
                   <th>Tags</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {problems.map(p => (
                   <tr key={p._id}>
-                    <td style={{ fontWeight: 500, maxWidth: 250 }}>{p.title}</td>
+                    <td style={{ fontWeight: 500, maxWidth: 220 }}>{p.title}</td>
                     <td style={{ fontSize: '0.85rem' }}>{p.subject}</td>
+                    <td style={{ fontSize: '0.75rem' }}>
+                      <span style={{
+                        background: (p as any).problemType === 'numerical' ? '#e0f2fe' : '#f0fdf4',
+                        color: (p as any).problemType === 'numerical' ? '#0369a1' : '#166534',
+                        padding: '2px 6px', borderRadius: 2, fontWeight: 500,
+                      }}>
+                        {(p as any).problemType === 'numerical' ? 'Integer' : 'MCQ'}
+                      </span>
+                    </td>
                     <td style={{ fontSize: '0.85rem' }}>{p.difficulty}</td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--c-ink-soft)' }}>
                       {typeof p.author === 'object' ? p.author.name : 'Unknown'}
@@ -469,10 +530,138 @@ const AdminPanel: React.FC = () => {
                     <td style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
                       {p.tags?.join(', ') || '—'}
                     </td>
+                    <td>
+                      <button className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
+                        onClick={() => openEditProblem(p._id)}>
+                        View/Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {/* Problem edit modal */}
+            {editingProblem && editForm && (
+              <div className="modal-overlay" onClick={() => setEditingProblem(null)}>
+                <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }}>
+                  <h3 style={{ fontFamily: 'var(--f-serif)', fontSize: '1.3rem', marginBottom: '1.5rem' }}>View / Edit Problem</h3>
+
+                  <div className="form-group">
+                    <label className="form-label">Title</label>
+                    <input className="form-input" value={editForm.title}
+                      onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Problem Statement (HTML or text)</label>
+                    <textarea className="form-input" rows={5} value={editForm.content}
+                      onChange={e => setEditForm({ ...editForm, content: e.target.value })} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Subject</label>
+                      <select className="form-input" value={editForm.subject}
+                        onChange={e => setEditForm({ ...editForm, subject: e.target.value })}>
+                        {['Physics', 'Chemistry', 'Mathematics'].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Problem Type</label>
+                      <select className="form-input" value={editForm.problemType || 'mcq'}
+                        onChange={e => setEditForm({ ...editForm, problemType: e.target.value })}>
+                        <option value="mcq">MCQ</option>
+                        <option value="numerical">Integer/Numerical</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Difficulty</label>
+                      <select className="form-input" value={editForm.difficulty}
+                        onChange={e => setEditForm({ ...editForm, difficulty: e.target.value })}>
+                        {['Easy', 'Medium', 'Hard'].map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {(editForm.problemType || 'mcq') === 'mcq' ? (
+                    <>
+                      {(editForm.options || []).map((opt: any, i: number) => (
+                        <div key={opt.label} className="form-group">
+                          <label className="form-label">Option {opt.label}</label>
+                          <input className="form-input" value={opt.text}
+                            onChange={e => {
+                              const opts = [...editForm.options];
+                              opts[i] = { ...opts[i], text: e.target.value };
+                              setEditForm({ ...editForm, options: opts });
+                            }} />
+                        </div>
+                      ))}
+                      <div className="form-group">
+                        <label className="form-label">Correct Option</label>
+                        <select className="form-input" value={editForm.correctOption || 'A'}
+                          onChange={e => setEditForm({ ...editForm, correctOption: e.target.value })}>
+                          {['A', 'B', 'C', 'D'].map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">Correct Answer (number)</label>
+                        <input className="form-input" type="number" value={editForm.correctAnswer ?? 0}
+                          onChange={e => setEditForm({ ...editForm, correctAnswer: Number(e.target.value) })} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Answer Tolerance (±)</label>
+                        <input className="form-input" type="number" min={0} value={editForm.answerTolerance ?? 0}
+                          onChange={e => setEditForm({ ...editForm, answerTolerance: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Marks (correct)</label>
+                      <input className="form-input" type="number" value={editForm.marks}
+                        onChange={e => setEditForm({ ...editForm, marks: Number(e.target.value) })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Negative Marks</label>
+                      <input className="form-input" type="number" value={editForm.negativeMarks}
+                        onChange={e => setEditForm({ ...editForm, negativeMarks: Number(e.target.value) })} />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Explanation / Solution</label>
+                    <textarea className="form-input" rows={4} value={editForm.explanation || ''}
+                      onChange={e => setEditForm({ ...editForm, explanation: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Tags (comma-separated)</label>
+                    <input className="form-input" value={editForm.tags}
+                      onChange={e => setEditForm({ ...editForm, tags: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select className="form-input" value={editForm.status}
+                      onChange={e => setEditForm({ ...editForm, status: e.target.value })}>
+                      <option value="approved">Approved</option>
+                      <option value="pending">Pending</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <button className="btn btn-primary" onClick={handleSaveProblem} disabled={editSaving} style={{ flex: 1 }}>
+                      {editSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button className="btn" onClick={() => setEditingProblem(null)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
@@ -562,12 +751,20 @@ const AdminPanel: React.FC = () => {
               onChange={e => setProblemForm({ ...problemForm, content: e.target.value })}
               placeholder="A particle of mass m is projected..." />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Subject *</label>
               <select className="form-input" value={problemForm.subject}
                 onChange={e => setProblemForm({ ...problemForm, subject: e.target.value })}>
                 {['Physics', 'Chemistry', 'Mathematics'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Problem Type *</label>
+              <select className="form-input" value={problemForm.problemType}
+                onChange={e => setProblemForm({ ...problemForm, problemType: e.target.value as 'mcq' | 'numerical' })}>
+                <option value="mcq">MCQ (4 options)</option>
+                <option value="numerical">Integer / Numerical</option>
               </select>
             </div>
             <div className="form-group">
@@ -579,38 +776,66 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <span className="section-label">Answer Options *</span>
-          {problemForm.options.map((opt, i) => (
-            <div key={opt.label} className="form-group">
-              <label className="form-label">Option {opt.label}</label>
-              <input className="form-input" required value={opt.text}
-                onChange={e => {
-                  const opts = [...problemForm.options];
-                  opts[i] = { ...opts[i], text: e.target.value };
-                  setProblemForm({ ...problemForm, options: opts });
-                }} />
-            </div>
-          ))}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Correct Option *</label>
-              <select className="form-input" value={problemForm.correctOption}
-                onChange={e => setProblemForm({ ...problemForm, correctOption: e.target.value })}>
-                {['A', 'B', 'C', 'D'].map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Marks for Correct</label>
-              <input className="form-input" type="number" value={problemForm.marks}
-                onChange={e => setProblemForm({ ...problemForm, marks: Number(e.target.value) })} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Negative Marks</label>
-              <input className="form-input" type="number" value={problemForm.negativeMarks}
-                onChange={e => setProblemForm({ ...problemForm, negativeMarks: Number(e.target.value) })} />
-            </div>
-          </div>
+          {problemForm.problemType === 'mcq' ? (
+            <>
+              <span className="section-label">Answer Options *</span>
+              {problemForm.options.map((opt, i) => (
+                <div key={opt.label} className="form-group">
+                  <label className="form-label">Option {opt.label}</label>
+                  <input className="form-input" required value={opt.text}
+                    onChange={e => {
+                      const opts = [...problemForm.options];
+                      opts[i] = { ...opts[i], text: e.target.value };
+                      setProblemForm({ ...problemForm, options: opts });
+                    }} />
+                </div>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Correct Option *</label>
+                  <select className="form-input" value={problemForm.correctOption}
+                    onChange={e => setProblemForm({ ...problemForm, correctOption: e.target.value })}>
+                    {['A', 'B', 'C', 'D'].map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Marks for Correct</label>
+                  <input className="form-input" type="number" value={problemForm.marks}
+                    onChange={e => setProblemForm({ ...problemForm, marks: Number(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Negative Marks</label>
+                  <input className="form-input" type="number" value={problemForm.negativeMarks}
+                    onChange={e => setProblemForm({ ...problemForm, negativeMarks: Number(e.target.value) })} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="section-label">Numerical Answer</span>
+              <p style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)', marginBottom: '1rem' }}>
+                JEE integer-type: +4 for correct, 0 for wrong (no negative marking). Tolerance allows a range of accepted answers.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Correct Answer *</label>
+                  <input className="form-input" type="number" required value={problemForm.correctAnswer}
+                    onChange={e => setProblemForm({ ...problemForm, correctAnswer: Number(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tolerance (±)</label>
+                  <input className="form-input" type="number" min={0} value={problemForm.answerTolerance}
+                    onChange={e => setProblemForm({ ...problemForm, answerTolerance: Number(e.target.value) })}
+                    placeholder="0 = exact match" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Marks for Correct</label>
+                  <input className="form-input" type="number" value={problemForm.marks}
+                    onChange={e => setProblemForm({ ...problemForm, marks: Number(e.target.value) })} />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label className="form-label">Explanation / Solution</label>

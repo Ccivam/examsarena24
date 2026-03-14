@@ -56,7 +56,14 @@ router.post('/:id/practice-submit', isAuthenticated, async (req: Request, res: R
     const problem = await Problem.findById(req.params.id);
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
 
-    const correct = problem.correctOption === selectedOption;
+    let correct: boolean;
+    if (problem.problemType === 'numerical') {
+      const studentNum = parseFloat(selectedOption);
+      const tolerance = problem.answerTolerance ?? 0;
+      correct = !isNaN(studentNum) && Math.abs(studentNum - (problem.correctAnswer ?? 0)) <= tolerance;
+    } else {
+      correct = problem.correctOption === selectedOption;
+    }
 
     const existing = await PracticeSolve.findOne({ user: user._id, problem: problem._id });
     if (existing) {
@@ -75,7 +82,13 @@ router.post('/:id/practice-submit', isAuthenticated, async (req: Request, res: R
       });
     }
 
-    res.json({ correct, correctOption: problem.correctOption, explanation: problem.explanation });
+    res.json({
+      correct,
+      correctOption: problem.correctOption,
+      correctAnswer: problem.correctAnswer,
+      problemType: problem.problemType,
+      explanation: problem.explanation,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -109,7 +122,7 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
     }
 
     const problems = await Problem.find(filter)
-      .select('-correctOption -explanation')
+      .select('-correctOption -correctAnswer -explanation')
       .populate('author', 'name')
       .sort({ createdAt: -1 });
 
@@ -123,7 +136,7 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
 router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
-    const selectFields = user.role === 'admin' ? '' : '-correctOption -explanation';
+    const selectFields = user.role === 'admin' ? '' : '-correctOption -correctAnswer -explanation';
     const problem = await Problem.findById(req.params.id).select(selectFields).populate('author', 'name');
 
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
