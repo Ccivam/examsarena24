@@ -6,7 +6,7 @@ import { Test, Problem } from '../types';
 type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem' | 'post-discussion' | 'users';
 
 const emptyProblemForm = {
-  title: '', content: '', subject: 'Physics',
+  title: '', content: '', imageUrl: '', subject: 'Physics',
   options: [
     { label: 'A', text: '' },
     { label: 'B', text: '' },
@@ -35,6 +35,7 @@ const AdminPanel: React.FC = () => {
 
   // Problem form
   const [problemForm, setProblemForm] = useState(emptyProblemForm);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Discussion form
   const [discussionForm, setDiscussionForm] = useState({ title: '', content: '', type: 'general', test: '', pinned: false });
@@ -101,6 +102,25 @@ const AdminPanel: React.FC = () => {
       setTab('tests');
     } catch (err: any) {
       showMessage(err.response?.data?.message || 'Failed to create test', 'error');
+    }
+  };
+
+  // ── Image Upload ─────────────────────────────────────────────────────────
+  const handleImageUpload = async (file: File) => {
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await axios.post('/api/upload/problem-image', formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setProblemForm(prev => ({ ...prev, imageUrl: res.data.url }));
+      showMessage('Image uploaded!');
+    } catch (err: any) {
+      showMessage(err.response?.data?.message || 'Image upload failed', 'error');
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -561,6 +581,35 @@ const AdminPanel: React.FC = () => {
             <textarea className="form-input" required rows={4} value={problemForm.content}
               onChange={e => setProblemForm({ ...problemForm, content: e.target.value })}
               placeholder="A particle of mass m is projected..." />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Question Image (optional)</label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <label style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '8px 16px', border: '1px solid var(--c-border)', cursor: 'pointer',
+                fontSize: '0.85rem', background: 'var(--c-paper-dark)',
+                opacity: imageUploading ? 0.6 : 1,
+              }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  disabled={imageUploading}
+                  onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0]); e.target.value = ''; }}
+                />
+                {imageUploading ? 'Uploading...' : '📎 Upload Image'}
+              </label>
+              {problemForm.imageUrl && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <img src={problemForm.imageUrl} alt="preview" style={{ maxHeight: '120px', maxWidth: '300px', border: '1px solid var(--c-border)', objectFit: 'contain' }} />
+                  <button type="button" onClick={() => setProblemForm(prev => ({ ...prev, imageUrl: '' }))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '0.75rem', textAlign: 'left' }}>
+                    ✕ Remove image
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">

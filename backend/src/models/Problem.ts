@@ -8,6 +8,7 @@ export interface IOption {
 export interface IProblem extends Document {
   title: string;
   content: string;
+  imageUrl?: string;
   options: IOption[];
   correctOption: string; // 'A', 'B', 'C', or 'D'
   explanation: string;
@@ -31,6 +32,7 @@ const ProblemSchema = new Schema<IProblem>(
   {
     title: { type: String, required: true },
     content: { type: String, required: true },
+    imageUrl: { type: String },
     options: { type: [OptionSchema], required: true },
     correctOption: { type: String, required: true, enum: ['A', 'B', 'C', 'D'] },
     explanation: { type: String, default: '' },
