@@ -138,3 +138,49 @@ export const sendAnnouncementNotification = async (
   if (isDev) console.log(`\n📧 [ANNOUNCEMENT] To: ${to} | Title: ${discussion.title}\n`);
   else await send(to, `[JEE Arena] ${discussion.title}`, html);
 };
+
+export const sendCommentNotification = async (
+  to: string, toName: string,
+  commenterName: string,
+  discussion: { title: string; _id: string }
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:1rem;">JEE Arena</h2>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${toName},</p>
+      <p style="color:#4a4840;margin-bottom:1rem;"><strong>${commenterName}</strong> commented on your discussion:</p>
+      <div style="border-left:3px solid #39ff14;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#f2f0e6;">
+        <strong>${discussion.title}</strong>
+      </div>
+      <a href="${frontendUrl}/discussions/${discussion._id}"
+        style="display:inline-block;padding:12px 28px;background:#0a0a0a;color:#fcfbf6;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        View Discussion →
+      </a>
+    </div>`;
+  if (isDev) console.log(`\n📧 [COMMENT] To: ${to} | By: ${commenterName}\n`);
+  else await send(to, `${commenterName} commented on your discussion`, html);
+};
+
+export const sendReplyNotification = async (
+  to: string, toName: string,
+  replierName: string,
+  discussion: { title: string; _id: string }
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:1rem;">JEE Arena</h2>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${toName},</p>
+      <p style="color:#4a4840;margin-bottom:1rem;"><strong>${replierName}</strong> replied to your comment in:</p>
+      <div style="border-left:3px solid #39ff14;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#f2f0e6;">
+        <strong>${discussion.title}</strong>
+      </div>
+      <a href="${frontendUrl}/discussions/${discussion._id}"
+        style="display:inline-block;padding:12px 28px;background:#0a0a0a;color:#fcfbf6;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        View Reply →
+      </a>
+    </div>`;
+  if (isDev) console.log(`\n📧 [REPLY] To: ${to} | By: ${replierName}\n`);
+  else await send(to, `${replierName} replied to your comment`, html);
+};

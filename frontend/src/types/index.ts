@@ -94,10 +94,18 @@ export interface Result {
   calculatedAt: string;
 }
 
+export interface Reply {
+  _id: string;
+  author: { _id: string; name: string; picture: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
 export interface Comment {
   _id: string;
   author: { _id: string; name: string; picture: string; role: string };
   content: string;
+  replies: Reply[];
   createdAt: string;
 }
 

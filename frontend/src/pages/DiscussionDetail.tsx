@@ -2,7 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Discussion, Comment } from '../types';
+import { Discussion, Comment, Reply } from '../types';
+
+const Avatar: React.FC<{ src?: string; name: string; size?: number }> = ({ src, name, size = 22 }) =>
+  src ? (
+    <img src={src} alt={name} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0 }} />
+  ) : (
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--c-ink)', color: 'var(--c-paper)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45, fontWeight: 700, flexShrink: 0 }}>
+      {name[0]?.toUpperCase()}
+    </div>
+  );
+
+const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
+  if (role !== 'admin' && role !== 'super_admin') return null;
+  return (
+    <span style={{ fontSize: '0.6rem', background: 'var(--c-ink)', color: 'var(--c-paper)', padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      {role === 'super_admin' ? 'Owner' : 'Admin'}
+    </span>
+  );
+};
 
 const DiscussionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +30,10 @@ const DiscussionDetail: React.FC = () => {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // replyingTo: commentId being replied to
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
 
   useEffect(() => {
     axios
@@ -32,7 +54,10 @@ const DiscussionDetail: React.FC = () => {
         { content: commentText.trim() },
         { withCredentials: true }
       );
-      setDiscussion(prev => prev ? { ...prev, comments: [...prev.comments, r.data] } : prev);
+      setDiscussion(prev => prev ? {
+        ...prev,
+        comments: [...prev.comments, { ...r.data, replies: r.data.replies || [] }]
+      } : prev);
       setCommentText('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to post comment');
@@ -53,10 +78,59 @@ const DiscussionDetail: React.FC = () => {
     }
   };
 
+  const handleReply = async (commentId: string) => {
+    if (!replyText.trim()) return;
+    setReplySubmitting(true);
+    try {
+      const r = await axios.post(
+        `/api/discussions/${id}/comments/${commentId}/replies`,
+        { content: replyText.trim() },
+        { withCredentials: true }
+      );
+      setDiscussion(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: prev.comments.map(c =>
+            c._id === commentId
+              ? { ...c, replies: [...(c.replies || []), r.data] }
+              : c
+          ),
+        };
+      });
+      setReplyText('');
+      setReplyingTo(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to post reply');
+    } finally {
+      setReplySubmitting(false);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!window.confirm('Delete this reply?')) return;
+    try {
+      await axios.delete(`/api/discussions/${id}/comments/${commentId}/replies/${replyId}`, { withCredentials: true });
+      setDiscussion(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: prev.comments.map(c =>
+            c._id === commentId
+              ? { ...c, replies: c.replies.filter(r => r._id !== replyId) }
+              : c
+          ),
+        };
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete reply');
+    }
+  };
+
   if (loading) return <div className="loading-container">Loading...</div>;
   if (!discussion) return <div className="loading-container">Discussion not found.</div>;
 
-  const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
+  const isDiscussionAuthor = user?._id === discussion.author._id;
 
   return (
     <section className="view-section">
@@ -90,9 +164,7 @@ const DiscussionDetail: React.FC = () => {
       </h2>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>
-        {discussion.author.picture && (
-          <img src={discussion.author.picture} alt={discussion.author.name} style={{ width: 22, height: 22, borderRadius: '50%' }} />
-        )}
+        <Avatar src={discussion.author.picture} name={discussion.author.name} />
         <span style={{ fontWeight: 500, color: 'var(--c-ink)' }}>{discussion.author.name}</span>
         <span>·</span>
         <span>{new Date(discussion.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
@@ -100,15 +172,7 @@ const DiscussionDetail: React.FC = () => {
 
       {/* Content */}
       <div
-        style={{
-          padding: '1.5rem',
-          border: '1px solid var(--c-border)',
-          background: 'var(--c-paper-dark)',
-          marginBottom: '3rem',
-          lineHeight: 1.8,
-          fontSize: '0.95rem',
-          whiteSpace: 'pre-wrap',
-        }}
+        style={{ padding: '1.5rem', border: '1px solid var(--c-border)', background: 'var(--c-paper-dark)', marginBottom: '3rem', lineHeight: 1.8, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}
         dangerouslySetInnerHTML={{ __html: discussion.content }}
       />
 
@@ -124,42 +188,109 @@ const DiscussionDetail: React.FC = () => {
           </div>
         ) : (
           discussion.comments.map((c: Comment) => {
-            const canDelete = user?._id === c.author._id || isAdminUser;
+            const canDeleteComment = user?._id === c.author._id || isDiscussionAuthor;
+            const isReplying = replyingTo === c._id;
+
             return (
-              <div
-                key={c._id}
-                style={{
-                  padding: '1rem 1.25rem',
-                  border: '1px solid var(--c-border)',
-                  background: 'var(--c-paper-dark)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
-                    {c.author.picture && (
-                      <img src={c.author.picture} alt={c.author.name} style={{ width: 20, height: 20, borderRadius: '50%' }} />
-                    )}
-                    <span style={{ fontWeight: 600, color: 'var(--c-ink)' }}>{c.author.name}</span>
-                    {(c.author.role === 'admin' || c.author.role === 'super_admin') && (
-                      <span style={{ fontSize: '0.6rem', background: 'var(--c-ink)', color: 'var(--c-paper)', padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {c.author.role === 'super_admin' ? 'Owner' : 'Admin'}
+              <div key={c._id} style={{ border: '1px solid var(--c-border)', background: 'var(--c-paper-dark)' }}>
+                {/* Comment */}
+                <div style={{ padding: '1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                      <Avatar src={c.author.picture} name={c.author.name} />
+                      <span style={{ fontWeight: 600, color: 'var(--c-ink)' }}>{c.author.name}</span>
+                      <RoleBadge role={c.author.role} />
+                      <span style={{ color: 'var(--c-ink-soft)' }}>·</span>
+                      <span style={{ color: 'var(--c-ink-soft)' }}>
+                        {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </span>
-                    )}
-                    <span style={{ color: 'var(--c-ink-soft)' }}>·</span>
-                    <span style={{ color: 'var(--c-ink-soft)' }}>
-                      {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        onClick={() => { setReplyingTo(isReplying ? null : c._id); setReplyText(''); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-ink-soft)', fontSize: '0.75rem', textDecoration: 'underline' }}
+                      >
+                        {isReplying ? 'Cancel' : 'Reply'}
+                      </button>
+                      {canDeleteComment && (
+                        <button
+                          onClick={() => handleDeleteComment(c._id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '0.75rem' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDeleteComment(c._id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-ink-soft)', fontSize: '0.75rem' }}
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <p style={{ fontSize: '0.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{c.content}</p>
                 </div>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{c.content}</p>
+
+                {/* Replies */}
+                {(c.replies?.length > 0 || isReplying) && (
+                  <div style={{ borderTop: '1px solid var(--c-border)', background: '#fff' }}>
+                    {c.replies?.map((r: Reply) => {
+                      const canDeleteReply = user?._id === r.author._id || isDiscussionAuthor;
+                      return (
+                        <div key={r._id} style={{ padding: '0.75rem 1.25rem 0.75rem 2.5rem', borderBottom: '1px solid var(--c-border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
+                              <span style={{ color: 'var(--c-ink-soft)', fontSize: '0.8rem' }}>↳</span>
+                              <Avatar src={r.author.picture} name={r.author.name} size={18} />
+                              <span style={{ fontWeight: 600, color: 'var(--c-ink)' }}>{r.author.name}</span>
+                              <RoleBadge role={r.author.role} />
+                              <span style={{ color: 'var(--c-ink-soft)' }}>·</span>
+                              <span style={{ color: 'var(--c-ink-soft)' }}>
+                                {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                              </span>
+                            </div>
+                            {canDeleteReply && (
+                              <button
+                                onClick={() => handleDeleteReply(c._id, r._id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '0.75rem' }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                          <p style={{ fontSize: '0.88rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0, paddingLeft: '1.5rem' }}>{r.content}</p>
+                        </div>
+                      );
+                    })}
+
+                    {/* Reply input */}
+                    {isReplying && (
+                      <div style={{ padding: '0.75rem 1.25rem 0.75rem 2.5rem' }}>
+                        <textarea
+                          className="form-input"
+                          rows={2}
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder="Write a reply..."
+                          style={{ marginBottom: '0.5rem', resize: 'vertical', fontSize: '0.88rem' }}
+                          maxLength={2000}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: '6px 16px', fontSize: '0.8rem' }}
+                            onClick={() => handleReply(c._id)}
+                            disabled={!replyText.trim() || replySubmitting}
+                          >
+                            {replySubmitting ? 'Posting...' : 'Post Reply'}
+                          </button>
+                          <button
+                            className="btn"
+                            style={{ padding: '6px 16px', fontSize: '0.8rem' }}
+                            onClick={() => { setReplyingTo(null); setReplyText(''); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
@@ -169,9 +300,7 @@ const DiscussionDetail: React.FC = () => {
       {/* Add comment */}
       <form onSubmit={handleComment}>
         <span className="section-label" style={{ marginBottom: '0.75rem' }}>Add a Comment</span>
-        {error && (
-          <div className="alert alert-error" style={{ marginBottom: '0.75rem' }}>{error}</div>
-        )}
+        {error && <div className="alert alert-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
         <textarea
           className="form-input"
           rows={4}
