@@ -2,7 +2,20 @@ import express, { Request, Response } from 'express';
 import Discussion from '../models/Discussion';
 import { isAuthenticated, isAdmin } from '../middleware/auth';
 import User, { IUser } from '../models/User';
-import { sendAnnouncementNotification, sendCommentNotification, sendReplyNotification } from '../config/mailer';
+import { sendAnnouncementNotification, sendCommentNotification, sendReplyNotification, sendMentionNotification } from '../config/mailer';
+
+// Parse @username mentions from content and notify those users
+const notifyMentions = (content: string, senderId: string, senderName: string, discussion: { title: string; _id: string }) => {
+  const mentions = [...content.matchAll(/@([a-z0-9_]{3,8})/gi)].map(m => m[1].toLowerCase());
+  if (mentions.length === 0) return;
+  User.find({ username: { $in: mentions } }).select('_id name email').then(users => {
+    for (const u of users) {
+      if (u._id.toString() !== senderId && u.email) {
+        sendMentionNotification(u.email, u.name, senderName, discussion).catch(() => {});
+      }
+    }
+  }).catch(() => {});
+};
 
 const router = express.Router();
 
@@ -67,6 +80,9 @@ router.post('/', isAdmin, async (req: Request, res: Response) => {
 
     res.status(201).json(discussion);
 
+    // Notify @mentions in discussion content
+    notifyMentions(content, user._id.toString(), user.name, { title: discussion.title, _id: discussion._id.toString() });
+
     // Fire-and-forget: notify all users for announcements and editorials
     if (discussion.type === 'announcement' || discussion.type === 'editorial') {
       User.find({}, 'name email').then(users => {
@@ -102,6 +118,9 @@ router.post('/:id/comments', isAuthenticated, async (req: Request, res: Response
     await discussion.populate('comments.author', 'name picture role');
     const newComment = discussion.comments[discussion.comments.length - 1];
     res.status(201).json(newComment);
+
+    // Notify @mentions in comment
+    notifyMentions(content, user._id.toString(), user.name, { title: discussion.title, _id: discussion._id.toString() });
 
     // Notify discussion author (if someone else commented)
     const discussionAuthor = discussion.author as any;
@@ -168,6 +187,9 @@ router.post('/:id/comments/:commentId/replies', isAuthenticated, async (req: Req
     const updatedComment = discussion.comments.find(c => c._id.toString() === req.params.commentId)!;
     const newReply = updatedComment.replies[updatedComment.replies.length - 1];
     res.status(201).json(newReply);
+
+    // Notify @mentions in reply
+    notifyMentions(content, user._id.toString(), user.name, { title: discussion.title, _id: discussion._id.toString() });
 
     // Notify comment author (if someone else replied)
     const fullComment = await Discussion.findById(req.params.id)

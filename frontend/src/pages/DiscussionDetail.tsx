@@ -3,6 +3,25 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Discussion, Comment, Reply } from '../types';
+import MentionTextarea from '../components/MentionTextarea';
+
+// Render text with @username mentions as clickable profile links
+const renderWithMentions = (text: string) => {
+  const parts = text.split(/(@[a-z0-9_]{3,8})/gi);
+  return parts.map((part, i) => {
+    if (/^@[a-z0-9_]{3,8}$/i.test(part)) {
+      return (
+        <Link key={i} to={`/user/${part.slice(1).toLowerCase()}`}
+          style={{ color: 'var(--c-ink)', fontWeight: 600, textDecoration: 'none', borderBottom: '1px solid var(--c-border)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          {part}
+        </Link>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
 
 const Avatar: React.FC<{ src?: string; name: string; size?: number }> = ({ src, name, size = 22 }) =>
   src ? (
@@ -165,7 +184,7 @@ const DiscussionDetail: React.FC = () => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem', fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>
         <Avatar src={discussion.author.picture} name={discussion.author.name} />
-        <span style={{ fontWeight: 500, color: 'var(--c-ink)' }}>{discussion.author.name}</span>
+        <Link to={`/user/${discussion.author._id}`} style={{ fontWeight: 500, color: 'var(--c-ink)', textDecoration: 'none' }}>{discussion.author.name}</Link>
         <span>·</span>
         <span>{new Date(discussion.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
@@ -198,7 +217,7 @@ const DiscussionDetail: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
                       <Avatar src={c.author.picture} name={c.author.name} />
-                      <span style={{ fontWeight: 600, color: 'var(--c-ink)' }}>{c.author.name}</span>
+                      <Link to={`/user/${c.author._id}`} style={{ fontWeight: 600, color: 'var(--c-ink)', textDecoration: 'none' }}>{c.author.name}</Link>
                       <RoleBadge role={c.author.role} />
                       <span style={{ color: 'var(--c-ink-soft)' }}>·</span>
                       <span style={{ color: 'var(--c-ink-soft)' }}>
@@ -222,7 +241,7 @@ const DiscussionDetail: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  <p style={{ fontSize: '0.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{c.content}</p>
+                  <p style={{ fontSize: '0.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{renderWithMentions(c.content)}</p>
                 </div>
 
                 {/* Replies */}
@@ -236,7 +255,7 @@ const DiscussionDetail: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
                               <span style={{ color: 'var(--c-ink-soft)', fontSize: '0.8rem' }}>↳</span>
                               <Avatar src={r.author.picture} name={r.author.name} size={18} />
-                              <span style={{ fontWeight: 600, color: 'var(--c-ink)' }}>{r.author.name}</span>
+                              <Link to={`/user/${r.author._id}`} style={{ fontWeight: 600, color: 'var(--c-ink)', textDecoration: 'none' }}>{r.author.name}</Link>
                               <RoleBadge role={r.author.role} />
                               <span style={{ color: 'var(--c-ink-soft)' }}>·</span>
                               <span style={{ color: 'var(--c-ink-soft)' }}>
@@ -252,7 +271,7 @@ const DiscussionDetail: React.FC = () => {
                               </button>
                             )}
                           </div>
-                          <p style={{ fontSize: '0.88rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0, paddingLeft: '1.5rem' }}>{r.content}</p>
+                          <p style={{ fontSize: '0.88rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0, paddingLeft: '1.5rem' }}>{renderWithMentions(r.content)}</p>
                         </div>
                       );
                     })}
@@ -260,12 +279,12 @@ const DiscussionDetail: React.FC = () => {
                     {/* Reply input */}
                     {isReplying && (
                       <div style={{ padding: '0.75rem 1.25rem 0.75rem 2.5rem' }}>
-                        <textarea
+                        <MentionTextarea
                           className="form-input"
                           rows={2}
                           value={replyText}
-                          onChange={e => setReplyText(e.target.value)}
-                          placeholder="Write a reply..."
+                          onChange={setReplyText}
+                          placeholder="Write a reply... use @ to mention someone"
                           style={{ marginBottom: '0.5rem', resize: 'vertical', fontSize: '0.88rem' }}
                           maxLength={2000}
                           autoFocus
@@ -301,12 +320,12 @@ const DiscussionDetail: React.FC = () => {
       <form onSubmit={handleComment}>
         <span className="section-label" style={{ marginBottom: '0.75rem' }}>Add a Comment</span>
         {error && <div className="alert alert-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
-        <textarea
+        <MentionTextarea
           className="form-input"
           rows={4}
           value={commentText}
-          onChange={e => setCommentText(e.target.value)}
-          placeholder="Share your thoughts, ask a doubt, or discuss the solution..."
+          onChange={setCommentText}
+          placeholder="Share your thoughts... use @ to mention someone"
           style={{ marginBottom: '0.75rem', resize: 'vertical' }}
           maxLength={2000}
         />
