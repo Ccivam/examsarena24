@@ -34,7 +34,7 @@ router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const test = await Test.findById(req.params.id).populate({
       path: 'problems.problem',
-      select: '-correctOption -explanation', // hide answers
+      select: '-correctOption -correctAnswer -explanation', // hide answers
     });
 
     if (!test) {
@@ -61,7 +61,7 @@ router.post('/:id/start', isAuthenticated, async (req: Request, res: Response) =
     const user = req.user as IUser;
     const test = await Test.findById(req.params.id).populate({
       path: 'problems.problem',
-      select: '-correctOption -explanation',
+      select: '-correctOption -correctAnswer -explanation',
     });
 
     if (!test) {

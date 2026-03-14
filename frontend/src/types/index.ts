@@ -34,8 +34,11 @@ export interface Problem {
   _id: string;
   title: string;
   content: string;
+  problemType?: 'mcq' | 'numerical';
   options: { label: string; text: string }[];
   correctOption?: string;
+  correctAnswer?: number;
+  answerTolerance?: number;
   explanation?: string;
   subject: 'Physics' | 'Chemistry' | 'Mathematics';
   marks: number;
