@@ -22,8 +22,6 @@ import Problems from './pages/Problems';
 import ProblemSolve from './pages/ProblemSolve';
 import Discussions from './pages/Discussions';
 import DiscussionDetail from './pages/DiscussionDetail';
-import Doubts from './pages/Doubts';
-import DoubtChat from './pages/DoubtChat';
 import UsernameSetup from './pages/UsernameSetup';
 import UserProfile from './pages/UserProfile';
 
@@ -105,8 +103,6 @@ const App: React.FC = () => (
           <Route path="/problems/:id" element={<ProblemSolve />} />
           <Route path="/discussions" element={<Discussions />} />
           <Route path="/discussions/:id" element={<DiscussionDetail />} />
-          <Route path="/doubts" element={<Doubts />} />
-          <Route path="/doubts/:id" element={<DoubtChat />} />
           <Route path="/user/:id" element={<UserProfile />} />
           <Route path="/profile" element={<Profile />} />
           <Route
