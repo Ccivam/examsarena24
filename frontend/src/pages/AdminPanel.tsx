@@ -174,10 +174,13 @@ const AdminPanel: React.FC = () => {
   // ── Manage Test Problems ─────────────────────────────────────────────────
   const openProblemPicker = async (test: Test) => {
     setManagingTest(test);
-    const res = await axios.get('/api/admin/problems/approved', { withCredentials: true });
-    setApprovedProblems(res.data);
-    // Pre-select already added problems
-    const currentIds = (test.problems || []).map((tp: any) =>
+    // Fetch approved problems + full test (my-tests omits problems for perf)
+    const [problemsRes, testRes] = await Promise.all([
+      axios.get('/api/admin/problems/approved', { withCredentials: true }),
+      axios.get(`/api/tests/${test._id}`, { withCredentials: true }),
+    ]);
+    setApprovedProblems(problemsRes.data);
+    const currentIds = (testRes.data.test?.problems || []).map((tp: any) =>
       typeof tp.problem === 'object' ? tp.problem._id : tp.problem
     );
     setSelectedProblemIds(currentIds);
