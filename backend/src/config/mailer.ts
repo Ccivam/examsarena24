@@ -185,6 +185,69 @@ export const sendMentionNotification = async (
   else await send(to, `${mentionerName} mentioned you in a discussion`, html);
 };
 
+export const sendDoubtRaisedEmail = async (
+  to: string, toName: string, studentName: string, doubtTitle: string, doubtId: string
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#fff3cd;border:1px solid #f59e0b;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;margin-bottom:1.5rem;font-size:0.85rem;">New Doubt Ticket</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${toName},</p>
+      <p style="color:#4a4840;margin-bottom:1rem;"><strong>${studentName}</strong> has raised a doubt and needs your help:</p>
+      <div style="border-left:3px solid #f59e0b;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#fffbeb;">
+        <strong>${doubtTitle}</strong>
+      </div>
+      <a href="${frontendUrl}/doubts/${doubtId}" style="display:inline-block;padding:12px 28px;background:#0a0a0a;color:#fcfbf6;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        Accept & Help →
+      </a>
+    </div>`;
+  if (isDev) console.log(`\n📧 [DOUBT RAISED] To: ${to} | By: ${studentName} | Title: ${doubtTitle}\n`);
+  else await send(to, `[JEE Arena] New doubt: ${doubtTitle}`, html);
+};
+
+export const sendDoubtAcceptedEmail = async (
+  to: string, toName: string, teacherName: string, doubtTitle: string, doubtId: string
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#d1fae5;border:1px solid #10b981;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;margin-bottom:1.5rem;font-size:0.85rem;">Teacher Accepted Your Doubt</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${toName},</p>
+      <p style="color:#4a4840;margin-bottom:1rem;"><strong>${teacherName}</strong> has accepted your doubt and is ready to help you:</p>
+      <div style="border-left:3px solid #10b981;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#ecfdf5;">
+        <strong>${doubtTitle}</strong>
+      </div>
+      <a href="${frontendUrl}/doubts/${doubtId}" style="display:inline-block;padding:12px 28px;background:#39ff14;border:1px solid #0a0a0a;color:#0a0a0a;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        Open Chat →
+      </a>
+    </div>`;
+  if (isDev) console.log(`\n📧 [DOUBT ACCEPTED] To: ${to} | By teacher: ${teacherName}\n`);
+  else await send(to, `${teacherName} accepted your doubt`, html);
+};
+
+export const sendDoubtMarkedClearedEmail = async (
+  to: string, toName: string, doubtTitle: string, doubtId: string
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#dbeafe;border:1px solid #3b82f6;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;margin-bottom:1.5rem;font-size:0.85rem;">Teacher Marked Your Doubt Cleared</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${toName},</p>
+      <p style="color:#4a4840;margin-bottom:1rem;">Your teacher has marked your doubt as cleared. Please open the chat and confirm whether your doubt is actually resolved:</p>
+      <div style="border-left:3px solid #3b82f6;padding:0.75rem 1rem;margin-bottom:1.5rem;background:#eff6ff;">
+        <strong>${doubtTitle}</strong>
+      </div>
+      <a href="${frontendUrl}/doubts/${doubtId}" style="display:inline-block;padding:12px 28px;background:#0a0a0a;color:#fcfbf6;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        Confirm or Continue Chat →
+      </a>
+    </div>`;
+  if (isDev) console.log(`\n📧 [DOUBT CLEARED] To: ${to} | Title: ${doubtTitle}\n`);
+  else await send(to, `Your doubt has been marked cleared — please confirm`, html);
+};
+
 export const sendReplyNotification = async (
   to: string, toName: string,
   replierName: string,
