@@ -7,6 +7,7 @@ import path from 'path';
 import MongoStore from 'connect-mongo';
 import rateLimit from 'express-rate-limit';
 import { connectDB } from './config/db';
+import { connectRedis } from './config/redis';
 import { startScheduler } from './utils/scheduler';
 
 // Routes
@@ -28,6 +29,7 @@ app.set('trust proxy', 1);
 
 // Connect to MongoDB and start scheduler
 connectDB().then(() => startScheduler());
+connectRedis().catch(console.error);
 
 // Rate limiting
 const generalLimiter = rateLimit({

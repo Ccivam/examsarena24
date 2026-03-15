@@ -8,6 +8,8 @@ import User, { IUser } from '../models/User';
 import mongoose from 'mongoose';
 import { calculateResultsForTest } from '../utils/calculateResults';
 import { sendNewTestNotification } from '../config/mailer';
+import { isRedisReady, saveAnswerToRedis } from '../config/redis';
+import { flushRedisAnswers } from '../utils/flushRedisAnswers';
 
 const router = express.Router();
 
@@ -129,33 +131,30 @@ router.post('/:id/start', isAuthenticated, async (req: Request, res: Response) =
 router.put('/:id/answer', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
-    const test = await Test.findById(req.params.id);
+    const { problemId, selectedOption } = req.body;
 
-    if (!test) {
-      return res.status(404).json({ message: 'Test not found' });
+    // If Redis is available, write only to Redis — zero DB reads
+    if (isRedisReady()) {
+      await saveAnswerToRedis(user._id.toString(), req.params.id, problemId, selectedOption || '');
+      return res.json({ message: 'Answer saved' });
     }
+
+    // Fallback: Redis not available — write directly to DB
+    const test = await Test.findById(req.params.id);
+    if (!test) return res.status(404).json({ message: 'Test not found' });
 
     const now = new Date();
     if (now < test.startTime || now >= test.endTime) {
       return res.status(400).json({ message: 'Test is not currently active' });
     }
 
-    const { problemId, selectedOption } = req.body;
-
     let submission = await Submission.findOne({ user: user._id, test: test._id });
-    if (!submission) {
-      return res.status(404).json({ message: 'Submission not found. Start the test first.' });
-    }
+    if (!submission) return res.status(404).json({ message: 'Submission not found. Start the test first.' });
+    if (submission.isSubmitted) return res.status(400).json({ message: 'Test already submitted' });
 
-    if (submission.isSubmitted) {
-      return res.status(400).json({ message: 'Test already submitted' });
-    }
-
-    // Update or add answer
     const existingAnswerIndex = submission.answers.findIndex(
       (a) => a.problem.toString() === problemId
     );
-
     if (existingAnswerIndex >= 0) {
       submission.answers[existingAnswerIndex].selectedOption = selectedOption;
       submission.answers[existingAnswerIndex].submittedAt = new Date();
@@ -166,9 +165,8 @@ router.put('/:id/answer', isAuthenticated, async (req: Request, res: Response) =
         submittedAt: new Date(),
       });
     }
-
     await submission.save();
-    res.json({ message: 'Answer saved', submission });
+    res.json({ message: 'Answer saved' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -183,6 +181,9 @@ router.post('/:id/submit', isAuthenticated, async (req: Request, res: Response) 
     if (!test) {
       return res.status(404).json({ message: 'Test not found' });
     }
+
+    // Flush Redis answers into DB before marking submitted, then delete the key
+    await flushRedisAnswers(user._id.toString(), req.params.id, true);
 
     let submission = await Submission.findOne({ user: user._id, test: test._id });
     if (!submission) {
