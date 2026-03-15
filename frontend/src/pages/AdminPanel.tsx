@@ -50,6 +50,31 @@ const AdminPanel: React.FC = () => {
   const [editForm, setEditForm] = useState<any>(null);
   const [editSaving, setEditSaving] = useState(false);
 
+  // Registrations / live modal
+  const [viewingTest, setViewingTest] = useState<Test | null>(null);
+  const [viewTab, setViewTab] = useState<'registrations' | 'live'>('registrations');
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [liveParticipants, setLiveParticipants] = useState<any[]>([]);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const openViewModal = async (test: Test, tab: 'registrations' | 'live' = 'registrations') => {
+    setViewingTest(test);
+    setViewTab(tab);
+    setViewLoading(true);
+    try {
+      const [regRes, liveRes] = await Promise.all([
+        axios.get(`/api/admin/tests/${test._id}/registrations`, { withCredentials: true }),
+        axios.get(`/api/admin/tests/${test._id}/live`, { withCredentials: true }),
+      ]);
+      setRegistrations(regRes.data);
+      setLiveParticipants(liveRes.data);
+    } catch {
+      showMessage('Failed to load participants', 'error');
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
   // Problem picker for a test
   const [managingTest, setManagingTest] = useState<Test | null>(null);
   const [approvedProblems, setApprovedProblems] = useState<Problem[]>([]);
@@ -378,6 +403,10 @@ const AdminPanel: React.FC = () => {
                   <td>
                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                       <button className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
+                        onClick={() => openViewModal(t)}>
+                        👥 View
+                      </button>
+                      <button className="btn" style={{ fontSize: '0.7rem', padding: '4px 10px' }}
                         onClick={() => openProblemPicker(t)}>
                         Manage Qs
                       </button>
@@ -414,6 +443,130 @@ const AdminPanel: React.FC = () => {
               ))}
             </tbody>
           </table>
+
+          {/* Registrations / Live modal */}
+          {viewingTest && (
+            <div className="modal-overlay" onClick={() => setViewingTest(null)}>
+              <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontFamily: 'var(--f-serif)', fontSize: '1.4rem', marginBottom: '0.25rem' }}>
+                    {viewingTest.title}
+                  </h3>
+                  <p style={{ color: 'var(--c-ink-soft)', fontSize: '0.85rem' }}>
+                    {registrations.length} registered &bull; {liveParticipants.length} currently active
+                  </p>
+                </div>
+
+                {/* Tabs */}
+                <div style={{ display: 'flex', borderBottom: '2px solid var(--c-ink)', marginBottom: '1.5rem' }}>
+                  {([
+                    { id: 'registrations', label: `Registrations (${registrations.length})` },
+                    { id: 'live', label: `Live Now (${liveParticipants.length})` },
+                  ] as const).map(t => (
+                    <button key={t.id} onClick={() => setViewTab(t.id)} style={{
+                      padding: '8px 16px', background: viewTab === t.id ? 'var(--c-ink)' : 'transparent',
+                      color: viewTab === t.id ? 'var(--c-paper)' : 'var(--c-ink-soft)',
+                      border: 'none', cursor: 'pointer', fontFamily: 'var(--f-sans)',
+                      fontSize: '0.8rem', fontWeight: 500,
+                    }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {viewLoading ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--c-ink-soft)' }}>Loading...</div>
+                ) : viewTab === 'registrations' ? (
+                  registrations.length === 0 ? (
+                    <div className="empty-state">No registrations yet.</div>
+                  ) : (
+                    <table className="table-container">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th>Email</th>
+                          <th>Payment</th>
+                          <th>UTR / Note</th>
+                          <th>Registered At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {registrations.map((r: any) => (
+                          <tr key={r._id}>
+                            <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              {r.user?.picture && (
+                                <img src={r.user.picture} alt={r.user.name} style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                              )}
+                              <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>{r.user?.name || '—'}</span>
+                            </td>
+                            <td style={{ fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>{r.user?.email || '—'}</td>
+                            <td>
+                              <span className={`status-badge status-${r.paymentStatus}`} style={{ fontSize: '0.7rem' }}>
+                                {r.paymentStatus}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>
+                              {r.utrNumber || (r.paymentStatus === 'free' ? 'Free' : '—')}
+                            </td>
+                            <td style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
+                              {new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
+                ) : (
+                  liveParticipants.length === 0 ? (
+                    <div className="empty-state">
+                      {(viewingTest as any).status === 'live'
+                        ? 'No one is currently taking the test.'
+                        : 'Test is not live yet — no active participants.'}
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)', marginBottom: '1rem' }}>
+                        These students have started the test and have not submitted yet.
+                      </p>
+                      <table className="table-container">
+                        <thead>
+                          <tr>
+                            <th>Student</th>
+                            <th>Email</th>
+                            <th>Started At</th>
+                            <th>Answered</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {liveParticipants.map((s: any) => (
+                            <tr key={s._id}>
+                              <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {s.user?.picture && (
+                                  <img src={s.user.picture} alt={s.user.name} style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                                )}
+                                <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>{s.user?.name || '—'}</span>
+                              </td>
+                              <td style={{ fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>{s.user?.email || '—'}</td>
+                              <td style={{ fontSize: '0.75rem', color: 'var(--c-ink-soft)' }}>
+                                {new Date(s.startedAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                              </td>
+                              <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                {s.answers?.filter((a: any) => a.selectedOption).length || 0} / {s.answers?.length || 0}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )
+                )}
+
+                <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+                  <button className="btn" onClick={() => setViewingTest(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Problem picker modal */}
           {managingTest && (

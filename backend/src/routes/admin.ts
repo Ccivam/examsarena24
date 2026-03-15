@@ -165,4 +165,28 @@ router.get('/tests/:id/submissions', isAdmin, async (req: Request, res: Response
   }
 });
 
+// Get all registrations for a test (admin view)
+router.get('/tests/:id/registrations', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const registrations = await Registration.find({ test: req.params.id })
+      .populate('user', 'name email picture')
+      .sort({ createdAt: -1 });
+    res.json(registrations);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get users currently taking the test (submitted = false, startedAt exists)
+router.get('/tests/:id/live', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const live = await Submission.find({ test: req.params.id, isSubmitted: false })
+      .populate('user', 'name email picture')
+      .sort({ startedAt: -1 });
+    res.json(live);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 export default router;
