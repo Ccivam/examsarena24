@@ -17,6 +17,8 @@ const Profile: React.FC = () => {
   const { user } = useAuth();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [doubtStats, setDoubtStats] = useState<{ resolved: number; flagged: number; active: number } | null>(null);
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
     axios
@@ -24,7 +26,13 @@ const Profile: React.FC = () => {
       .then((r) => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+
+    if (isAdmin) {
+      axios.get('/api/doubts/admin/stats', { withCredentials: true })
+        .then(r => setDoubtStats(r.data))
+        .catch(() => {});
+    }
+  }, [isAdmin]);
 
   if (loading) return <div className="loading-container">Loading profile...</div>;
   if (!data) return null;
@@ -109,6 +117,27 @@ const Profile: React.FC = () => {
           <span className="stat-label">Problems Solved</span>
         </div>
       </div>
+
+      {/* Admin doubt stats */}
+      {isAdmin && doubtStats && (
+        <>
+          <span className="section-label" style={{ marginBottom: '1rem' }}>Doubt Resolution Stats</span>
+          <div className="stats-grid" style={{ marginBottom: '3rem' }}>
+            <div className="stat-card">
+              <span className="stat-value" style={{ color: '#065f46' }}>{doubtStats.resolved}</span>
+              <span className="stat-label">Doubts Cleared</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value" style={{ color: '#1d4ed8' }}>{doubtStats.active}</span>
+              <span className="stat-label">Active Sessions</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value" style={{ color: '#991b1b' }}>{doubtStats.flagged}</span>
+              <span className="stat-label">Closed Unresolved</span>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Ranking graph */}
       {results.length > 0 && (
