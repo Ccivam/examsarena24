@@ -5,6 +5,8 @@ import passport from 'passport';
 import cors from 'cors';
 import path from 'path';
 import MongoStore from 'connect-mongo';
+import { createClient } from 'redis';
+import { RedisStore } from 'connect-redis';
 import rateLimit from 'express-rate-limit';
 import { connectDB } from './config/db';
 import { connectRedis } from './config/redis';
@@ -64,17 +66,26 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files (QR images etc.)
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
+// Session store — Redis if available, fallback to MongoDB
+const sessionStore = process.env.REDIS_URL
+  ? (() => {
+      const redisSessionClient = createClient({ url: process.env.REDIS_URL });
+      redisSessionClient.connect().catch(console.error);
+      return new RedisStore({ client: redisSessionClient, prefix: 'sess:' });
+    })()
+  : MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/jeearena',
+    });
+
 // Session
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'fallback_secret',
-    resave: true,
-    saveUninitialized: true,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/jeearena',
-    }),
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
     cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
