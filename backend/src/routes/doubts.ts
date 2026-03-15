@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import Doubt from '../models/Doubt';
 import User from '../models/User';
-import { isAuthenticated, isAdmin } from '../middleware/auth';
+import { isAuthenticated, isAdmin, isTeacherOrAdmin } from '../middleware/auth';
 import { IUser } from '../models/User';
 import {
   sendDoubtRaisedEmail,
@@ -11,14 +11,16 @@ import {
 
 const router = express.Router();
 
-// ── Admin stats (must come before /:id routes) ────────────────────────────
-router.get('/admin/stats', isAdmin, async (req: Request, res: Response) => {
+const isStaff = (user: IUser) => ['admin', 'super_admin', 'teacher'].includes(user.role);
+
+// ── Staff stats ────────────────────────────────────────────────────────────
+router.get('/admin/stats', isTeacherOrAdmin, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
     const [resolved, flagged, active] = await Promise.all([
       Doubt.countDocuments({ acceptedBy: user._id, status: 'resolved' }),
       Doubt.countDocuments({ acceptedBy: user._id, status: 'flagged' }),
-      Doubt.countDocuments({ acceptedBy: user._id, status: { $in: ['accepted', 'pending_closure'] } }),
+      Doubt.countDocuments({ acceptedBy: user._id, status: { $in: ['accepted', 'awaiting_payment', 'pending_closure'] } }),
     ]);
     res.json({ resolved, flagged, active });
   } catch {
@@ -41,12 +43,12 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
       subject: subject || 'General',
     });
 
-    // Email all admins (fire-and-forget)
-    const admins = await User.find({ role: { $in: ['admin', 'super_admin'] } }).select('name email');
-    for (const admin of admins) {
-      if (admin.email) {
+    // Email all admins + teachers
+    const staff = await User.find({ role: { $in: ['admin', 'super_admin', 'teacher'] } }).select('name email');
+    for (const member of staff) {
+      if (member.email) {
         sendDoubtRaisedEmail(
-          admin.email, admin.name, user.name, doubt.title, (doubt._id as any).toString()
+          member.email, member.name, user.name, doubt.title, (doubt._id as any).toString()
         ).catch(() => {});
       }
     }
@@ -70,7 +72,6 @@ router.get('/', isAuthenticated, async (req: Request, res: Response) => {
       if (view === 'mine') {
         filter.acceptedBy = user._id;
       } else {
-        // Open doubts available to accept + doubts this admin already handles
         filter.$or = [{ status: 'open' }, { acceptedBy: user._id }];
       }
     }
@@ -93,16 +94,16 @@ router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
     const user = req.user as IUser;
     const doubt = await Doubt.findById(req.params.id)
       .populate('student', 'name picture')
-      .populate('acceptedBy', 'name picture')
+      .populate('acceptedBy', 'name picture feePerDoubt')
       .populate('messages.sender', 'name picture role');
 
     if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
 
-    const isStudent = (doubt.student as any)._id.toString() === user._id.toString();
-    const isAccepted = doubt.acceptedBy && (doubt.acceptedBy as any)._id.toString() === user._id.toString();
-    const isAdminUser = user.role === 'admin' || user.role === 'super_admin';
+    const studentId = (doubt.student as any)._id.toString();
+    const acceptedById = doubt.acceptedBy ? (doubt.acceptedBy as any)._id.toString() : null;
+    const userIsStaff = isStaff(user);
 
-    if (!isStudent && !isAccepted && !isAdminUser)
+    if (!userIsStaff && studentId !== user._id.toString() && acceptedById !== user._id.toString())
       return res.status(403).json({ message: 'Access denied' });
 
     res.json(doubt);
@@ -111,18 +112,28 @@ router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   }
 });
 
-// ── Admin accepts a doubt (open → accepted) ───────────────────────────────
-router.post('/:id/accept', isAdmin, async (req: Request, res: Response) => {
+// ── Teacher/admin accepts a doubt ─────────────────────────────────────────
+router.post('/:id/accept', isTeacherOrAdmin, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
     const doubt = await Doubt.findById(req.params.id).populate('student', 'name email');
     if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
     if (doubt.status !== 'open')
-      return res.status(400).json({ message: 'This doubt has already been accepted by another teacher.' });
+      return res.status(400).json({ message: 'This doubt has already been accepted.' });
 
-    doubt.status = 'accepted';
+    const fee = user.feePerDoubt || 0;
     doubt.acceptedBy = user._id as any;
     doubt.acceptedAt = new Date();
+    doubt.fee = fee;
+
+    if (fee > 0) {
+      doubt.status = 'awaiting_payment';
+      doubt.paymentStatus = 'pending';
+    } else {
+      doubt.status = 'accepted';
+      doubt.paymentStatus = 'free';
+    }
+
     await doubt.save();
 
     const student = doubt.student as any;
@@ -133,6 +144,29 @@ router.post('/:id/accept', isAdmin, async (req: Request, res: Response) => {
     }
 
     res.json(doubt);
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ── Student submits UTR for payment ───────────────────────────────────────
+router.post('/:id/pay', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as IUser;
+    const { utrNumber } = req.body;
+    if (!utrNumber?.trim()) return res.status(400).json({ message: 'UTR number is required' });
+
+    const doubt = await Doubt.findById(req.params.id);
+    if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
+    if (doubt.student.toString() !== user._id.toString())
+      return res.status(403).json({ message: 'Access denied' });
+    if (doubt.status !== 'awaiting_payment')
+      return res.status(400).json({ message: 'No payment required' });
+
+    doubt.utrNumber = utrNumber.trim();
+    await doubt.save();
+
+    res.json({ message: 'UTR submitted. Admin will verify payment shortly.' });
   } catch {
     res.status(500).json({ message: 'Server error' });
   }
@@ -165,8 +199,8 @@ router.post('/:id/message', isAuthenticated, async (req: Request, res: Response)
   }
 });
 
-// ── Admin marks as cleared (accepted → pending_closure) ───────────────────
-router.post('/:id/mark-cleared', isAdmin, async (req: Request, res: Response) => {
+// ── Teacher/admin marks as cleared (accepted → pending_closure) ───────────
+router.post('/:id/mark-cleared', isTeacherOrAdmin, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
     const doubt = await Doubt.findById(req.params.id).populate('student', 'name email');
@@ -236,15 +270,15 @@ router.post('/:id/student-disagree', isAuthenticated, async (req: Request, res: 
   }
 });
 
-// ── Admin force-closes (→ flagged = not cleared) ──────────────────────────
-router.post('/:id/force-close', isAdmin, async (req: Request, res: Response) => {
+// ── Teacher/admin force-closes (→ flagged = not cleared) ──────────────────
+router.post('/:id/force-close', isTeacherOrAdmin, async (req: Request, res: Response) => {
   try {
     const user = req.user as IUser;
     const doubt = await Doubt.findById(req.params.id);
     if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
     if (doubt.acceptedBy?.toString() !== user._id.toString())
       return res.status(403).json({ message: 'Not your doubt session' });
-    if (!['accepted', 'pending_closure'].includes(doubt.status))
+    if (!['accepted', 'awaiting_payment', 'pending_closure'].includes(doubt.status))
       return res.status(400).json({ message: 'Already closed' });
 
     doubt.status = 'flagged';

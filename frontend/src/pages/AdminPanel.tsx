@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Test, Problem } from '../types';
 
-type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem' | 'post-discussion' | 'users';
+type Tab = 'overview' | 'tests' | 'problems' | 'create-test' | 'create-problem' | 'post-discussion' | 'users' | 'teacher-apps' | 'teacher-payout';
 
 const emptyProblemForm = {
   title: '', content: '', subject: 'Physics',
@@ -44,6 +44,16 @@ const AdminPanel: React.FC = () => {
 
   // Users management (super_admin)
   const [users, setUsers] = useState<any[]>([]);
+
+  // Teacher applications
+  const [teacherApps, setTeacherApps] = useState<any[]>([]);
+
+  // Teacher payout
+  const [payoutData, setPayoutData] = useState<any[]>([]);
+  const [payoutMonth, setPayoutMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   // Problem edit modal
   const [editingProblem, setEditingProblem] = useState<any>(null);
@@ -98,8 +108,12 @@ const AdminPanel: React.FC = () => {
       );
     } else if (tab === 'users') {
       axios.get('/api/users', { withCredentials: true }).then(r => setUsers(r.data));
+    } else if (tab === 'teacher-apps') {
+      axios.get('/api/teacher-applications', { withCredentials: true }).then(r => setTeacherApps(r.data));
+    } else if (tab === 'teacher-payout') {
+      axios.get(`/api/admin/teacher-payout?month=${payoutMonth}`, { withCredentials: true }).then(r => setPayoutData(r.data));
     }
-  }, [tab]);
+  }, [tab, payoutMonth]);
 
   // ── Create Test ──────────────────────────────────────────────────────────
   const handleTestTimeChange = (key: 'startTime' | 'endTime', value: string) => {
@@ -190,6 +204,17 @@ const AdminPanel: React.FC = () => {
     setSelectedProblemIds(prev =>
       prev.includes(problemId) ? prev.filter(id => id !== problemId) : [...prev, problemId]
     );
+  };
+
+  const handleTeacherAppAction = async (appId: string, action: 'approve' | 'reject') => {
+    try {
+      await axios.put(`/api/teacher-applications/${appId}/${action}`, {}, { withCredentials: true });
+      showMessage(`Application ${action}d.`);
+      const r = await axios.get('/api/teacher-applications', { withCredentials: true });
+      setTeacherApps(r.data);
+    } catch (err: any) {
+      showMessage(err.response?.data?.message || `Failed to ${action}`, 'error');
+    }
   };
 
   const saveTestProblems = async () => {
@@ -316,6 +341,8 @@ const AdminPanel: React.FC = () => {
     { id: 'create-test', label: '+ New Test' },
     { id: 'create-problem', label: '+ New Problem' },
     { id: 'post-discussion', label: '+ Post Discussion' },
+    { id: 'teacher-apps', label: 'Teacher Applications' },
+    { id: 'teacher-payout', label: 'Teacher Payout' },
     ...(isSuperAdmin ? [{ id: 'users' as Tab, label: 'Users' }] : []),
   ];
 
@@ -1115,6 +1142,136 @@ const AdminPanel: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {/* ── Teacher Applications ────────────────────────────────────────────── */}
+      {tab === 'teacher-apps' && (
+        <div>
+          <h3 style={{ marginBottom: '1.25rem', fontSize: '1rem', fontWeight: 600 }}>
+            Teacher Applications ({teacherApps.length})
+          </h3>
+          {teacherApps.length === 0 ? (
+            <div className="empty-state">No applications yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {teacherApps.map((app: any) => (
+                <div key={app._id} style={{
+                  border: '1px solid var(--c-border)', padding: '1.25rem 1.5rem',
+                  background: 'var(--c-paper)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                        {app.user?.picture && (
+                          <img src={app.user.picture} alt={app.user.name}
+                            style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                        )}
+                        <span style={{ fontWeight: 600 }}>{app.user?.name}</span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--c-ink-soft)' }}>{app.user?.email}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--c-ink-soft)', marginBottom: '0.5rem' }}>
+                        Applied {new Date(app.createdAt).toLocaleDateString('en-IN')}
+                      </div>
+                      <div style={{
+                        fontSize: '0.87rem', background: 'var(--c-paper-dark)',
+                        padding: '0.75rem', borderLeft: '3px solid var(--c-border)',
+                        whiteSpace: 'pre-wrap',
+                      }}>
+                        {app.motivation}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', flexShrink: 0 }}>
+                      {app.status === 'pending' ? (
+                        <>
+                          <button className="btn btn-primary" style={{ fontSize: '0.78rem' }}
+                            onClick={() => handleTeacherAppAction(app._id, 'approve')}>
+                            Approve
+                          </button>
+                          <button className="btn" style={{ fontSize: '0.78rem', color: '#991b1b' }}
+                            onClick={() => handleTeacherAppAction(app._id, 'reject')}>
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{
+                          padding: '4px 12px', fontSize: '0.78rem', fontWeight: 600, borderRadius: 2,
+                          background: app.status === 'approved' ? '#d1fae5' : '#fee2e2',
+                          color: app.status === 'approved' ? '#065f46' : '#991b1b',
+                        }}>
+                          {app.status === 'approved' ? 'Approved ✓' : 'Rejected'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Teacher Payout ──────────────────────────────────────────────────── */}
+      {tab === 'teacher-payout' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Monthly Payout Report</h3>
+            <input
+              type="month"
+              className="form-input"
+              value={payoutMonth}
+              onChange={e => setPayoutMonth(e.target.value)}
+              style={{ width: 'auto', padding: '4px 10px', fontSize: '0.85rem' }}
+            />
+          </div>
+          {payoutData.length === 0 ? (
+            <div className="empty-state">No resolved doubts for this month.</div>
+          ) : (
+            <>
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Teacher</th>
+                      <th>Doubts Resolved</th>
+                      <th>Total Earnings (₹)</th>
+                      <th>UPI ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payoutData.map((row: any) => (
+                      <tr key={row.teacherId}>
+                        <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {row.picture && (
+                            <img src={row.picture} alt={row.name}
+                              style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                          )}
+                          <span style={{ fontWeight: 500 }}>{row.name}</span>
+                        </td>
+                        <td>{row.doubtsResolved}</td>
+                        <td style={{ fontWeight: 600, color: '#1d4ed8' }}>₹{row.totalEarnings}</td>
+                        <td style={{ fontSize: '0.82rem', color: 'var(--c-ink-soft)' }}>
+                          {row.upiId || <span style={{ fontStyle: 'italic' }}>Not set</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} style={{ fontWeight: 600 }}>Total</td>
+                      <td style={{ fontWeight: 700, color: '#1d4ed8' }}>
+                        ₹{payoutData.reduce((s: number, r: any) => s + r.totalEarnings, 0)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--c-ink-soft)' }}>
+                Showing resolved doubts for {payoutMonth}. Transfer each teacher's amount to their UPI ID.
+              </div>
+            </>
           )}
         </div>
       )}

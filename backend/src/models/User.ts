@@ -8,8 +8,11 @@ export interface IUser extends Document {
   name: string;
   picture: string;
   username?: string;
-  role: 'student' | 'admin' | 'super_admin';
+  role: 'student' | 'admin' | 'super_admin' | 'teacher';
   emailVerified: boolean;
+  feePerDoubt?: number;
+  teacherUpiId?: string;
+  teacherBio?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -23,7 +26,10 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, required: true },
     picture: { type: String, default: '' },
     username: { type: String, sparse: true, unique: true, lowercase: true, trim: true, minlength: 3, maxlength: 8 },
-    role: { type: String, enum: ['student', 'admin', 'super_admin'], default: 'student' },
+    role: { type: String, enum: ['student', 'admin', 'super_admin', 'teacher'], default: 'student' },
+    feePerDoubt: { type: Number, default: 0 },
+    teacherUpiId: { type: String },
+    teacherBio: { type: String, maxlength: 500 },
     emailVerified: { type: Boolean, default: false },
   },
   { timestamps: true }

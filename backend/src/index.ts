@@ -23,6 +23,7 @@ import paymentRoutes from './routes/payments';
 import adminRoutes from './routes/admin';
 import discussionRoutes from './routes/discussions';
 import doubtRoutes from './routes/doubts';
+import teacherApplicationRoutes from './routes/teacherApplications';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000');
@@ -109,6 +110,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/doubts', doubtRoutes);
+app.use('/api/teacher-applications', teacherApplicationRoutes);
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', timestamp: new Date() }));
 

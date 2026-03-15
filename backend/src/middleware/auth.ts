@@ -17,6 +17,15 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction): void =
   res.status(403).json({ message: 'Forbidden. Admin access required.' });
 };
 
+// Allows teacher, admin, and super_admin
+export const isTeacherOrAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.isAuthenticated()) {
+    const role = (req.user as IUser).role;
+    if (role === 'teacher' || role === 'admin' || role === 'super_admin') return next();
+  }
+  res.status(403).json({ message: 'Forbidden. Teacher or admin access required.' });
+};
+
 // Only super_admin
 export const isSuperAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (req.isAuthenticated() && (req.user as IUser).role === 'super_admin') {

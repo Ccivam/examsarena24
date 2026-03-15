@@ -3,7 +3,7 @@ import User from '../models/User';
 import Result from '../models/Result';
 import Registration from '../models/Registration';
 import PracticeSolve from '../models/PracticeSolve';
-import { isAuthenticated, isAdmin, isSuperAdmin } from '../middleware/auth';
+import { isAuthenticated, isAdmin, isSuperAdmin, isTeacherOrAdmin } from '../middleware/auth';
 import Test from '../models/Test';
 import { IUser } from '../models/User';
 
@@ -160,6 +160,22 @@ router.put('/:id/role', isSuperAdmin, async (req: Request, res: Response) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Teacher: update their own profile (fee + UPI)
+router.put('/teacher/profile', isTeacherOrAdmin, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as IUser;
+    const { feePerDoubt, teacherUpiId, teacherBio } = req.body;
+    const update: any = {};
+    if (feePerDoubt !== undefined) update.feePerDoubt = Math.max(0, Number(feePerDoubt));
+    if (teacherUpiId !== undefined) update.teacherUpiId = teacherUpiId.trim();
+    if (teacherBio !== undefined) update.teacherBio = teacherBio.trim();
+    const updated = await User.findByIdAndUpdate(user._id, update, { new: true }).select('-password');
+    res.json(updated);
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });

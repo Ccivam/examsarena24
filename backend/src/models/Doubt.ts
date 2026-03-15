@@ -12,15 +12,19 @@ export interface IDoubt extends Document {
   title: string;
   description: string;
   subject: 'Physics' | 'Chemistry' | 'Mathematics' | 'General';
-  // open → accepted → pending_closure → resolved
-  //                              └───→ accepted (student disagrees)
-  // open/accepted → flagged (admin force-closes = not cleared)
-  status: 'open' | 'accepted' | 'pending_closure' | 'resolved' | 'flagged';
+  // open → awaiting_payment (if fee>0) → accepted → pending_closure → resolved
+  //                                                              └───→ accepted (student disagrees)
+  // open/awaiting_payment/accepted → flagged (teacher force-closes)
+  status: 'open' | 'awaiting_payment' | 'accepted' | 'pending_closure' | 'resolved' | 'flagged';
   acceptedBy?: mongoose.Types.ObjectId;
   acceptedAt?: Date;
   closedAt?: Date;
   adminMarkedCleared: boolean;
   studentAgreed: boolean;
+  // Payment
+  fee: number;
+  paymentStatus: 'free' | 'pending' | 'verified';
+  utrNumber?: string;
   messages: IMessage[];
   createdAt: Date;
   updatedAt: Date;
@@ -42,7 +46,7 @@ const DoubtSchema = new Schema<IDoubt>(
     subject: { type: String, enum: ['Physics', 'Chemistry', 'Mathematics', 'General'], default: 'General' },
     status: {
       type: String,
-      enum: ['open', 'accepted', 'pending_closure', 'resolved', 'flagged'],
+      enum: ['open', 'awaiting_payment', 'accepted', 'pending_closure', 'resolved', 'flagged'],
       default: 'open',
     },
     acceptedBy: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -50,6 +54,9 @@ const DoubtSchema = new Schema<IDoubt>(
     closedAt: { type: Date },
     adminMarkedCleared: { type: Boolean, default: false },
     studentAgreed: { type: Boolean, default: false },
+    fee: { type: Number, default: 0 },
+    paymentStatus: { type: String, enum: ['free', 'pending', 'verified'], default: 'free' },
+    utrNumber: { type: String },
     messages: [MessageSchema],
   },
   { timestamps: true }

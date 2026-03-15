@@ -8,6 +8,7 @@ import Submission from '../models/Submission';
 import { isAdmin } from '../middleware/auth';
 import { IUser } from '../models/User';
 import { sendLeaderboardPublishedEmail } from '../config/mailer';
+import Doubt from '../models/Doubt';
 
 const canManageTest = (test: any, user: IUser) =>
   user.role === 'super_admin' || test.createdBy.toString() === user._id.toString();
@@ -196,6 +197,62 @@ router.get('/tests/:id/live', isAdmin, async (req: Request, res: Response) => {
       .sort({ startedAt: -1 });
     res.json(live);
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Monthly teacher payout report
+router.get('/teacher-payout', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const { month, year } = req.query;
+    const now = new Date();
+    const y = parseInt(year as string) || now.getFullYear();
+    const m = parseInt(month as string) || now.getMonth() + 1;
+
+    const from = new Date(y, m - 1, 1);
+    const to = new Date(y, m, 1);
+
+    // Get all resolved doubts in the month with a fee, grouped by teacher
+    const resolved = await Doubt.find({
+      status: 'resolved',
+      paymentStatus: 'verified',
+      fee: { $gt: 0 },
+      closedAt: { $gte: from, $lt: to },
+    }).populate('acceptedBy', 'name email teacherUpiId');
+
+    const payoutMap: Record<string, { name: string; email: string; upiId: string; count: number; total: number }> = {};
+
+    for (const doubt of resolved) {
+      const teacher = doubt.acceptedBy as any;
+      if (!teacher) continue;
+      const key = teacher._id.toString();
+      if (!payoutMap[key]) {
+        payoutMap[key] = { name: teacher.name, email: teacher.email, upiId: teacher.teacherUpiId || '—', count: 0, total: 0 };
+      }
+      payoutMap[key].count++;
+      payoutMap[key].total += doubt.fee;
+    }
+
+    res.json({ month: m, year: y, teachers: Object.values(payoutMap) });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verify student payment for a doubt
+router.post('/doubts/:id/verify-payment', isAdmin, async (req: Request, res: Response) => {
+  try {
+    const doubt = await Doubt.findById(req.params.id);
+    if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
+    if (doubt.paymentStatus !== 'pending')
+      return res.status(400).json({ message: 'No pending payment to verify' });
+
+    doubt.paymentStatus = 'verified';
+    doubt.status = 'accepted';
+    await doubt.save();
+
+    res.json({ message: 'Payment verified, chat is now active.' });
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
