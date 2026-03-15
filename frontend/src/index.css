@@ -556,7 +556,7 @@ h1, h2, h3, h4, .serif-text {
   }
 
   .brand { display: none; }
-  .section-label { display: none; }
+  .sidebar .section-label { display: none; }
   .user-profile { display: none; }
 
   .nav-menu {
@@ -623,6 +623,13 @@ h1, h2, h3, h4, .serif-text {
 
   .card-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Make tables horizontally scrollable */
+  .table-container {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
