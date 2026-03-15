@@ -29,11 +29,16 @@ const Problems: React.FC = () => {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [subject, setSubject] = useState('');
+  const [difficulty, setDifficulty] = useState('');
 
   useEffect(() => {
     setLoading(true);
+    const params = new URLSearchParams({ page: String(page) });
+    if (subject) params.set('subject', subject);
+    if (difficulty) params.set('difficulty', difficulty);
     axios
-      .get(`/api/problems/practice?page=${page}`, { withCredentials: true })
+      .get(`/api/problems/practice?${params}`, { withCredentials: true })
       .then(r => {
         setProblems(r.data.problems);
         setPages(r.data.pages);
@@ -41,7 +46,10 @@ const Problems: React.FC = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, subject, difficulty]);
+
+  const handleSubject = (val: string) => { setSubject(val); setPage(1); };
+  const handleDifficulty = (val: string) => { setDifficulty(val); setPage(1); };
 
   return (
     <section className="view-section">
@@ -49,6 +57,34 @@ const Problems: React.FC = () => {
         <div>
           <h2 className="view-title">Problems</h2>
           <p className="view-subtitle">Practice problems from past contests. {total > 0 && `${total} total`}</p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          {['', 'Physics', 'Chemistry', 'Mathematics'].map(s => (
+            <button
+              key={s}
+              onClick={() => handleSubject(s)}
+              className={`btn${subject === s ? ' btn-primary' : ''}`}
+              style={{ fontSize: '0.78rem', padding: '5px 12px' }}
+            >
+              {s || 'All Subjects'}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          {['', 'Easy', 'Medium', 'Hard'].map(d => (
+            <button
+              key={d}
+              onClick={() => handleDifficulty(d)}
+              className={`btn${difficulty === d ? ' btn-primary' : ''}`}
+              style={{ fontSize: '0.78rem', padding: '5px 12px' }}
+            >
+              {d || 'All Levels'}
+            </button>
+          ))}
         </div>
       </div>
 

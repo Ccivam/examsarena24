@@ -21,7 +21,10 @@ router.get('/practice', isAuthenticated, async (req: Request, res: Response) => 
       endedTests.flatMap(t => t.problems.map(p => p.problem.toString()))
     )];
 
-    const filter = { status: 'approved', _id: { $in: eligibleProblemIds } };
+    const { subject, difficulty } = req.query;
+    const filter: any = { status: 'approved', _id: { $in: eligibleProblemIds } };
+    if (subject) filter.subject = subject;
+    if (difficulty) filter.difficulty = difficulty;
 
     const total = await Problem.countDocuments(filter);
     const problems = await Problem.find(filter)
