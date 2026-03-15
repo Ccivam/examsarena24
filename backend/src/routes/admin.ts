@@ -7,6 +7,7 @@ import Result from '../models/Result';
 import Submission from '../models/Submission';
 import { isAdmin } from '../middleware/auth';
 import { IUser } from '../models/User';
+import { sendLeaderboardPublishedEmail } from '../config/mailer';
 
 const canManageTest = (test: any, user: IUser) =>
   user.role === 'super_admin' || test.createdBy.toString() === user._id.toString();
@@ -73,6 +74,16 @@ router.put('/tests/:id/publish-leaderboard', isAdmin, async (req: Request, res: 
     }
     test.leaderboardPublishedAt = new Date();
     await test.save();
+
+    // Email all registered users
+    const registrations = await Registration.find({ test: req.params.id })
+      .populate<{ user: { name: string; email: string } }>('user', 'name email');
+    const emailPromises = registrations.map(reg =>
+      sendLeaderboardPublishedEmail(reg.user.email, reg.user.name, { title: test.title, _id: test._id.toString() })
+        .catch(() => {})
+    );
+    await Promise.all(emailPromises);
+
     res.json({ message: 'Leaderboard published', test });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

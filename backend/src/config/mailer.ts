@@ -185,6 +185,26 @@ export const sendMentionNotification = async (
   else await send(to, `${mentionerName} mentioned you in a discussion`, html);
 };
 
+export const sendLeaderboardPublishedEmail = async (
+  to: string, name: string, test: { title: string; _id: string }
+) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://examarena24.in';
+  const html = `
+    <div style="font-family:'Inter',sans-serif;max-width:500px;margin:0 auto;padding:2rem;border:1px solid #e0dcd0;">
+      <h2 style="font-family:Georgia,serif;font-weight:400;margin-bottom:0.5rem;">JEE Arena</h2>
+      <div style="background:#39ff14;padding:0.25rem 0.6rem;display:inline-block;font-style:italic;font-family:Georgia,serif;margin-bottom:1.5rem;font-size:0.85rem;">Results Published</div>
+      <p style="color:#0a0a0a;margin-bottom:0.75rem;">Hi ${name},</p>
+      <p style="color:#4a4840;margin-bottom:1.5rem;">The leaderboard for <strong>${test.title}</strong> has been published. Check your rank and see how you performed!</p>
+      <a href="${frontendUrl}/leaderboard/test/${test._id}"
+        style="display:inline-block;padding:12px 28px;background:#39ff14;border:1px solid #0a0a0a;color:#0a0a0a;font-family:'Inter',sans-serif;font-weight:600;text-decoration:none;text-transform:uppercase;font-size:0.8rem;letter-spacing:0.05em;">
+        View Leaderboard →
+      </a>
+      <p style="margin-top:1.5rem;font-size:0.75rem;color:#9a9690;">You received this because you registered for this exam on JEE Arena.</p>
+    </div>`;
+  if (isDev) console.log(`\n📧 [LEADERBOARD] To: ${to} | Test: ${test.title}\n`);
+  else await send(to, `Leaderboard published: ${test.title}`, html);
+};
+
 export const sendReplyNotification = async (
   to: string, toName: string,
   replierName: string,
