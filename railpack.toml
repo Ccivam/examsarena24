@@ -1,0 +1,5 @@
+[[install.npm]]
+cwd = "frontend"
+
+[[install.npm]]
+cwd = "backend"
