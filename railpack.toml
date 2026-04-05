@@ -3,3 +3,9 @@ cwd = "frontend"
 
 [[install.npm]]
 cwd = "backend"
+
+[build]
+cmd = "cd frontend && npm run build && cd ../backend && npm run build"
+
+[deploy]
+cmd = "cd backend && npm start"
