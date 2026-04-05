@@ -1,15 +1,17 @@
 import { createClient } from 'redis';
 
 const client = createClient({
-  url: process.env.REDIS_URL,
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD,
 });
 
 client.on('error', (err) => console.error('[Redis] Client error:', err));
 client.on('connect', () => console.log('[Redis] Connected'));
 
 export const connectRedis = async () => {
-  if (!process.env.REDIS_URL) {
-    console.warn('[Redis] REDIS_URL not set — Redis disabled, falling back to DB-only mode');
+  if (!process.env.REDIS_HOST) {
+    console.warn('[Redis] REDIS_HOST not set — Redis disabled, falling back to DB-only mode');
     return;
   }
   await client.connect();
