@@ -2,9 +2,7 @@
   "name": "jeearena",
   "version": "1.0.0",
   "scripts": {
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
+    "build": "npm ci --prefix frontend && npm run build --prefix frontend && npm ci --prefix backend && npm run build --prefix backend",
     "start": "cd backend && npm start"
   }
 }
