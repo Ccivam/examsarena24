@@ -1,11 +1,12 @@
 import express, { Request, Response } from 'express';
+import { randomInt } from 'crypto';
 import User from '../models/User';
 import OtpCode from '../models/OtpCode';
 import { sendOtpEmail } from '../config/mailer';
 
 const router = express.Router();
 
-const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const generateOtp = () => String(randomInt(100000, 999999));
 
 // ── REGISTER: Step 1 — send OTP to email ────────────────────────────────────
 // POST /api/auth/email/send-otp  { name, email, password }

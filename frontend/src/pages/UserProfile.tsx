@@ -4,10 +4,17 @@ import axios from 'axios';
 import RankingGraph from '../components/RankingGraph';
 import { Result, Test } from '../types';
 
+interface SolvedProblem {
+  _id: string;
+  problem: { _id: string; title: string; subject: string; difficulty: string; tags: string[] };
+  solvedAt: string;
+}
+
 interface PublicProfile {
   user: { _id: string; name: string; username?: string; picture: string; role: string; createdAt: string };
-  stats: { totalTests: number; avgScore: number; bestRank: number };
+  stats: { totalTests: number; avgScore: number; bestRank: number; problemsSolved: number };
   results: Result[];
+  solvedProblems: SolvedProblem[];
 }
 
 const UserProfile: React.FC = () => {
@@ -29,7 +36,7 @@ const UserProfile: React.FC = () => {
   if (loading) return <div className="loading-container">Loading profile...</div>;
   if (notFound || !data) return <div className="loading-container">User not found.</div>;
 
-  const { user, stats, results } = data;
+  const { user, stats, results, solvedProblems } = data;
 
   return (
     <section className="view-section">
@@ -85,6 +92,10 @@ const UserProfile: React.FC = () => {
           <span className="stat-value">{stats.bestRank > 0 ? `#${stats.bestRank}` : '—'}</span>
           <span className="stat-label">Best Rank</span>
         </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.problemsSolved}</span>
+          <span className="stat-label">Problems Solved</span>
+        </div>
       </div>
 
       {results.length > 0 && (
@@ -127,6 +138,36 @@ const UserProfile: React.FC = () => {
             })}
           </tbody>
         </table>
+      )}
+
+      {solvedProblems.length > 0 && (
+        <>
+          <span className="section-label" style={{ marginTop: '3rem' }}>Problems Solved</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+            {solvedProblems.map(sp => (
+              <Link
+                key={sp._id}
+                to={`/problems?subject=${sp.problem.subject}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem',
+                  border: '1px solid var(--c-border)', background: 'var(--c-paper-dark)',
+                  textDecoration: 'none', color: 'var(--c-ink)',
+                }}
+              >
+                <span style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: 80 }}>{sp.problem.subject}</span>
+                <span style={{ flex: 1, fontWeight: 500 }}>{sp.problem.title}</span>
+                <span style={{
+                  fontSize: '0.7rem', padding: '2px 8px',
+                  background: sp.problem.difficulty === 'easy' ? '#dcfce7' : sp.problem.difficulty === 'medium' ? '#fef3c7' : '#fee2e2',
+                  color: sp.problem.difficulty === 'easy' ? '#166534' : sp.problem.difficulty === 'medium' ? '#92400e' : '#991b1b',
+                  textTransform: 'capitalize',
+                }}>
+                  {sp.problem.difficulty}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

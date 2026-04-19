@@ -66,6 +66,10 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
       ? Math.min(...results.map(r => r.rank))
       : 0;
     const problemsSolved = await PracticeSolve.countDocuments({ user: user._id, correct: true });
+    const solvedProblems = await PracticeSolve.find({ user: user._id, correct: true })
+      .populate('problem', 'title subject difficulty tags')
+      .sort({ solvedAt: -1 })
+      .limit(50);
 
     // For admins: include tests they organized
     let organizedTests: any[] = [];
@@ -88,6 +92,7 @@ router.get('/profile', isAuthenticated, async (req: Request, res: Response) => {
       stats: { totalTests, avgScore, bestRank, problemsSolved },
       results,
       registrations,
+      solvedProblems,
       organizedTests,
     });
   } catch (error) {

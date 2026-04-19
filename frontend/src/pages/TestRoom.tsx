@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Test, Submission } from '../types';
+import { sanitizeHtml } from '../utils/sanitize';
 
 // ── NTA section ordering ──────────────────────────────────────────────────
 const SECTION_ORDER: { subject: string; type: 'mcq' | 'numerical' }[] = [
@@ -393,7 +394,7 @@ const TestRoom: React.FC = () => {
                 </div>
 
                 <div style={{ fontSize: '0.95rem', lineHeight: 1.8, marginBottom: '1.5rem', color: '#1a1a1a' }}
-                  dangerouslySetInnerHTML={{ __html: currentProblem.content }} />
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentProblem.content) }} />
 
                 {/* Integer input */}
                 {currentProblem.problemType === 'numerical' ? (

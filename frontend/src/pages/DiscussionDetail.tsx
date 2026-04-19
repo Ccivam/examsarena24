@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Discussion, Comment, Reply } from '../types';
 import MentionTextarea from '../components/MentionTextarea';
+import { sanitizeHtml } from '../utils/sanitize';
 
 // Render text with @username mentions as clickable profile links
 const renderWithMentions = (text: string) => {
@@ -192,7 +193,7 @@ const DiscussionDetail: React.FC = () => {
       {/* Content */}
       <div
         style={{ padding: '1.5rem', border: '1px solid var(--c-border)', background: 'var(--c-paper-dark)', marginBottom: '3rem', lineHeight: 1.8, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}
-        dangerouslySetInnerHTML={{ __html: discussion.content }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(discussion.content) }}
       />
 
       {/* Comments */}
